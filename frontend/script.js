@@ -34,7 +34,7 @@ function initMap() {
   
   // Mapy.cz tiles
 L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey={Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4}', {
-  attribution: '&copy; <a href="https://mapy.cz">Mapy.cz</a>',
+  attribution: '&copy; <a href="https://mapy.com">Mapy.com</a>',
   maxZoom: 19
 }).addTo(map);
   
