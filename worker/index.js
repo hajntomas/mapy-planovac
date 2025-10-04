@@ -146,32 +146,29 @@ async function handleRoute(request, apiKey) {
       );
     }
 
-    // Převod z lat,lon na lon,lat
+    // Frontend posílá: "50.0755,14.4378" (lat,lon)
+    // Potřebujeme: "14.4378,50.0755" (lon,lat)
+    
     const startCoords = start.split(',').map(c => parseFloat(c.trim()));
-    const startLon = startCoords[1];
-    const startLat = startCoords[0];
+    const startLonLat = `${startCoords[1]},${startCoords[0]}`; // lon,lat
     
     const endCoords = end.split(',').map(c => parseFloat(c.trim()));
-    const endLon = endCoords[1];
-    const endLat = endCoords[0];
+    const endLonLat = `${endCoords[1]},${endCoords[0]}`; // lon,lat
 
-    // SPRÁVNÝ ENDPOINT: /v1/routing/route
     const mapyUrl = new URL(`${MAPY_API_BASE}/v1/routing/route`);
     
-    // OPRAVA: Použít exploded formát (dvakrát stejný parametr)
-    mapyUrl.searchParams.append('start', startLon);
-    mapyUrl.searchParams.append('start', startLat);
-    mapyUrl.searchParams.append('end', endLon);
-    mapyUrl.searchParams.append('end', endLat);
+    // Unexploded formát: ?start=14.40094,50.0711
+    mapyUrl.searchParams.set('start', startLonLat);
+    mapyUrl.searchParams.set('end', endLonLat);
     
-    // Waypoints - také exploded formát
+    // Waypoints - unexploded formát s čárkou
     if (waypoints.length > 0) {
-      waypoints.forEach(wp => {
+      const waypointsLonLat = waypoints.map(wp => {
         const coords = wp.split(',').map(c => parseFloat(c.trim()));
-        const wpLon = coords[1];
-        const wpLat = coords[0];
-        mapyUrl.searchParams.append('waypoints', `${wpLon},${wpLat}`);
+        return `${coords[1]},${coords[0]}`; // lon,lat
       });
+      // Semicolon-separated
+      mapyUrl.searchParams.set('waypoints', waypointsLonLat.join(';'));
     }
     
     mapyUrl.searchParams.set('routeType', 'car_fast_traffic');
