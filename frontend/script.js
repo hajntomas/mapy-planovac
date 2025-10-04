@@ -5,7 +5,7 @@
 
 // ===== KONFIGURACE =====
 // DŮLEŽITÉ: Po deployi Workeru změňte tuto URL na vaši Worker URL!
-const WORKER_URL = 'https://mapy-planovac-worker.YOUR_ACCOUNT.workers.dev';
+const WORKER_URL = 'https://mapy-planovac-worker.hajn-tomas-gmail-com.workers.dev';
 
 // ===== GLOBÁLNÍ PROMĚNNÉ =====
 let map = null;
