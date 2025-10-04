@@ -33,7 +33,7 @@ function initMap() {
   map = L.map('map').setView([49.8175, 15.4730], 7); // Střed ČR
   
   // Mapy.cz tiles
-L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey={Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4}', {
+L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4', {
   attribution: '&copy; <a href="https://mapy.com">Mapy.com</a>',
   maxZoom: 19
 }).addTo(map);
