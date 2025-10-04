@@ -18,7 +18,7 @@ const CORS_HEADERS = {
   };
   
   // Základní URL pro Mapy.cz API
-  const MAPY_API_BASE = 'https://api.mapy.cz/v1';
+  const MAPY_API_BASE = 'https://api.mapy.com/v1';
   
   /**
    * Hlavní handler Workeru
