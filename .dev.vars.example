@@ -1,0 +1,10 @@
+# Mapy.cz API klíč
+# Získejte na: https://developer.mapy.cz/
+# 
+# DŮLEŽITÉ:
+# 1. Tento soubor je pouze příklad - commituje se do Gitu
+# 2. Pro lokální vývoj si vytvořte soubor .dev.vars (ten se NEcommituje!)
+# 3. Do .dev.vars zkopírujte tento obsah a doplňte skutečný API klíč
+# 4. Pro produkci nastavte přes: wrangler secret put MAPY_API_KEY
+
+MAPY_API_KEY=your_api_key_here

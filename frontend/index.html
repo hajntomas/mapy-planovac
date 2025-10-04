@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plánovač cest - Mapy.cz</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    
+    <!-- Vlastní CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hlavní kontejner -->
+    <div class="container">
+        <!-- Sidebar s formulářem -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-route"></i> Plánovač cest</h1>
+                <button class="close-btn" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Formulář pro plánování trasy -->
+                <form id="routeForm">
+                    <!-- Čas odjezdu -->
+                    <div class="form-group">
+                        <label for="departureTime">
+                            <i class="fas fa-clock"></i> Čas odjezdu
+                        </label>
+                        <input type="time" id="departureTime" required>
+                    </div>
+
+                    <!-- Start -->
+                    <div class="form-group">
+                        <label for="start">
+                            <i class="fas fa-flag-checkered"></i> Start
+                        </label>
+                        <div class="autocomplete-wrapper">
+                            <input 
+                                type="text" 
+                                id="start" 
+                                placeholder="Zadejte výchozí adresu..."
+                                autocomplete="off"
+                                required
+                            >
+                            <div class="autocomplete-results" id="startAutocomplete"></div>
+                        </div>
+                    </div>
+
+                    <!-- Zastávky -->
+                    <div id="waypointsContainer">
+                        <!-- Zastávky se přidávají dynamicky -->
+                    </div>
+
+                    <!-- Tlačítko pro přidání zastávky -->
+                    <button type="button" class="btn btn-secondary" id="addWaypoint">
+                        <i class="fas fa-plus"></i> Přidat zastávku
+                    </button>
+
+                    <!-- Cíl -->
+                    <div class="form-group">
+                        <label for="end">
+                            <i class="fas fa-map-marker-alt"></i> Cíl
+                        </label>
+                        <div class="autocomplete-wrapper">
+                            <input 
+                                type="text" 
+                                id="end" 
+                                placeholder="Zadejte cílovou adresu..."
+                                autocomplete="off"
+                                required
+                            >
+                            <div class="autocomplete-results" id="endAutocomplete"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tlačítka -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Naplánovat trasu
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="resetForm">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Výsledky - časový harmonogram -->
+                <div id="results" class="results" style="display: none;">
+                    <h2>Časový harmonogram</h2>
+                    
+                    <!-- Souhrn -->
+                    <div class="summary">
+                        <div class="summary-item">
+                            <i class="fas fa-road"></i>
+                            <span>Celková vzdálenost: <strong id="totalDistance">-</strong></span>
+                        </div>
+                        <div class="summary-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Celkový čas: <strong id="totalTime">-</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Tabulka s harmonogramem -->
+                    <div class="schedule-table">
+                        <table id="scheduleTable">
+                            <thead>
+                                <tr>
+                                    <th>Místo</th>
+                                    <th>Příjezd</th>
+                                    <th>Odjezd</th>
+                                    <th>Úsek</th>
+                                    <th>Celkem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleBody">
+                                <!-- Řádky se přidávají dynamicky -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Export tlačítka -->
+                    <div class="export-actions">
+                        <button class="btn btn-secondary" id="copyToClipboard">
+                            <i class="fas fa-copy"></i> Kopírovat
+                        </button>
+                        <button class="btn btn-secondary" id="printSchedule">
+                            <i class="fas fa-print"></i> Tisk
+                        </button>
+                        <button class="btn btn-secondary" id="openInMapy">
+                            <i class="fas fa-external-link-alt"></i> Otevřít v Mapy.cz
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Plovoucí tlačítko pro otevření sidebaru (mobil) -->
+            <button class="fab" id="openSidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Notifikace -->
+    <div id="notifications"></div>
+
+    <!-- Loading spinner -->
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Vlastní JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

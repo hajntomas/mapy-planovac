@@ -1,0 +1,14 @@
+# Cloudflare Worker konfigurace
+# Dokumentace: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "mapy-planovac-worker"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+# Environment variables (nastavíte později přes: wrangler secret put MAPY_API_KEY)
+[vars]
+WORKER_ENV = "production"
+
+# Poznámka: API klíč NESMÍ být zde!
+# Nastavuje se přes příkaz: wrangler secret put MAPY_API_KEY
+# nebo v Cloudflare dashboard → Worker → Settings → Variables
