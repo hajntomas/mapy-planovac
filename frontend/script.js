@@ -483,11 +483,20 @@ async function calculateRoute(formData) {
     
     const data = await response.json();
     
-    if (!data.route) {
+    // OPRAVENO: API vrací přímo length/duration/geometry, ne data.route
+    if (!data.length || !data.duration || !data.geometry) {
       throw new Error('Trasa nebyla nalezena.');
     }
     
-    return data;
+    // Přeformátování odpovědi do očekávané struktury
+    return {
+      route: {
+        length: data.length,
+        duration: data.duration,
+        geometry: data.geometry.geometry, // geometry je zanořené
+        legs: [] // TODO: API nevrací legs, musíme to vyřešit jinak
+      }
+    };
     
   } catch (error) {
     throw new Error(`Výpočet trasy selhal: ${error.message}`);
@@ -498,9 +507,10 @@ async function calculateRoute(formData) {
 function calculateSchedule(formData, routeData) {
   const schedule = [];
   let currentTime = timeToMinutes(formData.departureTime);
-  let totalDistance = 0;
   
-  const legs = routeData.route.legs || [];
+  // Celková vzdálenost a čas z API
+  const totalDistance = (routeData.route.length / 1000).toFixed(1); // metry na km
+  const totalDuration = Math.round(routeData.route.duration / 60); // sekundy na minuty
   
   // Start
   schedule.push({
@@ -512,56 +522,58 @@ function calculateSchedule(formData, routeData) {
     totalDistance: 0
   });
   
-  // Průjezd trasou
-  for (let i = 0; i < legs.length; i++) {
-    const leg = legs[i];
-    const distance = (leg.distance / 1000).toFixed(1); // metry na km
-    const duration = Math.round(leg.duration / 60); // sekundy na minuty
+  // Zastávky - bez legs musíme počítat proporcionálně
+  // (Pro správné fungování by bylo potřeba volat API pro každý úsek zvlášť)
+  const numSegments = formData.waypoints.length + 1;
+  const avgSegmentDistance = parseFloat(totalDistance) / numSegments;
+  const avgSegmentDuration = totalDuration / numSegments;
+  
+  let cumulativeDistance = 0;
+  
+  for (let i = 0; i < formData.waypoints.length; i++) {
+    const waypoint = formData.waypoints[i];
     
-    totalDistance += parseFloat(distance);
-    currentTime += duration;
+    currentTime += avgSegmentDuration;
+    cumulativeDistance += avgSegmentDistance;
     
-    // Je to zastávka nebo cíl?
-    if (i < formData.waypoints.length) {
-      // Zastávka
-      const waypoint = formData.waypoints[i];
-      const arrival = minutesToTime(currentTime);
-      
-      // Pokud je fixovaný čas, použij ho
-      if (waypoint.isFixed && waypoint.fixedTime) {
-        const fixedMinutes = timeToMinutes(waypoint.fixedTime);
-        currentTime = fixedMinutes;
-      }
-      
-      const departure = minutesToTime(currentTime + waypoint.breakMinutes);
-      currentTime += waypoint.breakMinutes;
-      
-      schedule.push({
-        type: waypoint.isFixed ? 'waypoint-fixed' : 'waypoint',
-        place: waypoint.address,
-        arrival: arrival,
-        departure: departure,
-        segmentDistance: distance,
-        totalDistance: totalDistance.toFixed(1),
-        breakMinutes: waypoint.breakMinutes
-      });
-      
-    } else {
-      // Cíl
-      schedule.push({
-        type: 'end',
-        place: formData.end.address,
-        arrival: minutesToTime(currentTime),
-        departure: null,
-        segmentDistance: distance,
-        totalDistance: totalDistance.toFixed(1)
-      });
+    const arrival = minutesToTime(Math.round(currentTime));
+    
+    // Pokud je fixovaný čas, použij ho
+    if (waypoint.isFixed && waypoint.fixedTime) {
+      const fixedMinutes = timeToMinutes(waypoint.fixedTime);
+      currentTime = fixedMinutes;
     }
+    
+    const departure = minutesToTime(Math.round(currentTime + waypoint.breakMinutes));
+    currentTime += waypoint.breakMinutes;
+    
+    schedule.push({
+      type: waypoint.isFixed ? 'waypoint-fixed' : 'waypoint',
+      place: waypoint.address,
+      arrival: arrival,
+      departure: departure,
+      segmentDistance: avgSegmentDistance.toFixed(1),
+      totalDistance: cumulativeDistance.toFixed(1),
+      breakMinutes: waypoint.breakMinutes
+    });
   }
+  
+  // Cíl
+  currentTime += avgSegmentDuration;
+  cumulativeDistance += avgSegmentDistance;
+  
+  schedule.push({
+    type: 'end',
+    place: formData.end.address,
+    arrival: minutesToTime(Math.round(currentTime)),
+    departure: null,
+    segmentDistance: avgSegmentDistance.toFixed(1),
+    totalDistance: totalDistance
+  });
   
   return {
     items: schedule,
-    totalDistance: totalDistance.toFixed(1),
+    totalDistance: totalDistance,
     totalTime: Math.round((currentTime - timeToMinutes(formData.departureTime)))
   };
 }
