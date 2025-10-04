@@ -127,6 +127,13 @@ async function fetchSuggestions(query, resultsElement, inputElement) {
     
     const data = await response.json();
     
+    // DOČASNÉ LOGOVÁNÍ - zjistíme strukturu
+    console.log('🔍 Celá odpověď:', data);
+    if (data.items && data.items.length > 0) {
+      console.log('🔍 První položka:', data.items[0]);
+      console.log('🔍 Struktura první položky:', JSON.stringify(data.items[0], null, 2));
+    }
+    
     // Zobrazení výsledků
     if (data.items && data.items.length > 0) {
       displaySuggestions(data.items, resultsElement, inputElement);
