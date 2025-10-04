@@ -153,8 +153,8 @@ function displaySuggestions(items, resultsElement, inputElement) {
   resultsElement.innerHTML = '';
   
   items.forEach(item => {
-    // Přeskočit položky bez souřadnic
-    if (!item.location || !item.location.lat || !item.location.lon) {
+    // Přeskočit položky bez souřadnic (position místo location!)
+    if (!item.position || !item.position.lat || !item.position.lon) {
       console.warn('Položka nemá souřadnice:', item);
       return;
     }
@@ -172,10 +172,10 @@ function displaySuggestions(items, resultsElement, inputElement) {
     
     div.innerHTML = highlighted;
     
-    // Kliknutí na návrh
+    // Kliknutí na návrh - OPRAVENO: position místo location!
     div.addEventListener('click', () => {
       inputElement.value = label;
-      inputElement.dataset.coords = `${item.location.lat},${item.location.lon}`;
+      inputElement.dataset.coords = `${item.position.lat},${item.position.lon}`;
       resultsElement.classList.remove('active');
     });
     
