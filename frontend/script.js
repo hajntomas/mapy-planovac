@@ -146,6 +146,12 @@ function displaySuggestions(items, resultsElement, inputElement) {
   resultsElement.innerHTML = '';
   
   items.forEach(item => {
+    // Přeskočit položky bez souřadnic
+    if (!item.location || !item.location.lat || !item.location.lon) {
+      console.warn('Položka nemá souřadnice:', item);
+      return;
+    }
+    
     const div = document.createElement('div');
     div.className = 'autocomplete-item';
     
@@ -168,6 +174,11 @@ function displaySuggestions(items, resultsElement, inputElement) {
     
     resultsElement.appendChild(div);
   });
+  
+  // Pokud nezbyla žádná položka se souřadnicemi
+  if (resultsElement.children.length === 0) {
+    resultsElement.innerHTML = '<div class="autocomplete-item">Žádné výsledky</div>';
+  }
   
   resultsElement.classList.add('active');
 }
