@@ -196,7 +196,7 @@ const CORS_HEADERS = {
       }
   
       // Sestavení URL pro Mapy.cz Routing API
-      const mapyUrl = new URL(`${MAPY_API_BASE}/routing`);
+      const mapyUrl = new URL(`${MAPY_API_BASE}/route`);
       mapyUrl.searchParams.set('start', start);
       mapyUrl.searchParams.set('end', end);
       
