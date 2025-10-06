@@ -621,54 +621,72 @@ tbody tr:hover {
 
 /* ===== PRINT STYLY ===== */
 @media print {
-  /* Skrýt vše kromě výsledků */
-  body {
-    margin: 0;
-    padding: 20px;
-    background: white;
+  /* Skrýt vše */
+  body > * {
+    display: none !important;
   }
   
-  .sidebar {
-    position: static !important;
-    width: 100% !important;
-    border: none !important;
-    background: white !important;
+  /* Zobrazit pouze kontejner */
+  .container {
+    display: block !important;
   }
   
+  /* Skrýt mapu a sidebar obsah */
+  .map-container,
   .sidebar-header,
-  .sidebar-content form,
-  .close-btn,
-  #addWaypoint,
-  .form-actions,
-  .export-actions {
-    display: none !important;
-  }
-  
-  .map-container {
-    display: none !important;
-  }
-  
-  .fab {
-    display: none !important;
-  }
-  
-  #notifications {
-    display: none !important;
-  }
-  
+  .fab,
+  #notifications,
   #loadingSpinner {
     display: none !important;
   }
   
-  /* Výsledky na celou stránku */
-  .results {
+  /* Sidebar jako hlavní obsah */
+  .sidebar {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    border: none !important;
+    background: white !important;
+    padding: 20px !important;
+  }
+  
+  /* Skrýt formulář */
+  .sidebar-content > form,
+  .sidebar-content > form ~ * {
+    display: none !important;
+  }
+  
+  /* Zobrazit POUZE results */
+  .sidebar-content {
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  
+  #results {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     page-break-after: avoid;
   }
   
-  .results h2 {
+  /* Skrýt export tlačítka */
+  .export-actions {
+    display: none !important;
+  }
+  
+  /* Hlavička */
+  #results::before {
+    content: "📋 Plán cesty - Itinerář";
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #000;
+  }
+  
+  #results h2 {
     font-size: 24px;
     margin-bottom: 20px;
     color: #000;
@@ -686,8 +704,8 @@ tbody tr:hover {
   }
   
   .summary-item {
-    padding: 10px;
-    border: 1px solid #000;
+    padding: 10px !important;
+    border: 1px solid #000 !important;
     background: white !important;
   }
   
@@ -697,13 +715,13 @@ tbody tr:hover {
   
   /* Tabulka */
   .schedule-table {
-    overflow: visible;
+    overflow: visible !important;
     margin-bottom: 20px;
   }
   
   table {
-    width: 100%;
-    border-collapse: collapse;
+    width: 100% !important;
+    border-collapse: collapse !important;
     page-break-inside: auto;
     background: white !important;
     box-shadow: none !important;
@@ -712,20 +730,21 @@ tbody tr:hover {
   thead {
     background: #333 !important;
     color: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
   th {
-    padding: 10px;
-    text-align: left;
-    font-weight: bold;
-    border: 1px solid #000;
+    padding: 10px !important;
+    text-align: left !important;
+    font-weight: bold !important;
+    border: 1px solid #000 !important;
+    color: white !important;
   }
   
   td {
-    padding: 10px;
-    border: 1px solid #000;
+    padding: 10px !important;
+    border: 1px solid #000 !important;
     page-break-inside: avoid;
   }
   
@@ -734,42 +753,12 @@ tbody tr:hover {
     page-break-after: auto;
   }
   
-  tbody tr:hover {
-    background: white !important;
-  }
-  
-  .row-start,
-  .row-waypoint,
-  .row-waypoint-fixed,
-  .row-end {
-    background: white !important;
-  }
-  
-  /* Zvýraznění důležitých řádků */
-  .row-start td:first-child::before {
-    content: "🚗 ";
-  }
-  
-  .row-end td:first-child::before {
-    content: "🏁 ";
-  }
-  
   .place-cell {
-    font-weight: bold;
+    font-weight: bold !important;
   }
   
-  /* Přidat hlavičku dokumentu */
-  .results::before {
-    content: "📋 Plán cesty - Itinerář";
-    display: block;
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    text-align: center;
-  }
-  
-  /* Přidat datum tisku */
-  .results::after {
+  /* Datum tisku */
+  #results::after {
     content: "Vytištěno: " attr(data-print-date);
     display: block;
     margin-top: 30px;
