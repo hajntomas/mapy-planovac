@@ -929,6 +929,13 @@ async function copyToClipboard() {
 
 // ===== EXPORT - TISK =====
 function printSchedule() {
+  // Přidat datum do results pro tisk
+  const results = document.getElementById('results');
+  const now = new Date();
+  const dateStr = `${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+  results.setAttribute('data-print-date', dateStr);
+  
+  // Spustit tisk
   window.print();
 }
 

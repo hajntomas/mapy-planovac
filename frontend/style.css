@@ -621,33 +621,160 @@ tbody tr:hover {
 
 /* ===== PRINT STYLY ===== */
 @media print {
+  /* Skrýt vše kromě výsledků */
+  body {
+    margin: 0;
+    padding: 20px;
+    background: white;
+  }
+  
   .sidebar {
-    display: none;
+    position: static !important;
+    width: 100% !important;
+    border: none !important;
+    background: white !important;
+  }
+  
+  .sidebar-header,
+  .sidebar-content form,
+  .close-btn,
+  #addWaypoint,
+  .form-actions,
+  .export-actions {
+    display: none !important;
   }
   
   .map-container {
-    display: none;
+    display: none !important;
   }
   
   .fab {
-    display: none;
+    display: none !important;
   }
   
   #notifications {
-    display: none;
+    display: none !important;
   }
   
+  #loadingSpinner {
+    display: none !important;
+  }
+  
+  /* Výsledky na celou stránku */
   .results {
     display: block !important;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: avoid;
   }
   
-  .export-actions {
-    display: none;
+  .results h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #000;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+  
+  /* Souhrn */
+  .summary {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+  }
+  
+  .summary-item {
+    padding: 10px;
+    border: 1px solid #000;
+    background: white !important;
+  }
+  
+  .summary-item i {
+    color: #000 !important;
+  }
+  
+  /* Tabulka */
+  .schedule-table {
+    overflow: visible;
+    margin-bottom: 20px;
   }
   
   table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: auto;
+    background: white !important;
+    box-shadow: none !important;
+  }
+  
+  thead {
+    background: #333 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  th {
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+    border: 1px solid #000;
+  }
+  
+  td {
+    padding: 10px;
+    border: 1px solid #000;
     page-break-inside: avoid;
+  }
+  
+  tbody tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  tbody tr:hover {
+    background: white !important;
+  }
+  
+  .row-start,
+  .row-waypoint,
+  .row-waypoint-fixed,
+  .row-end {
+    background: white !important;
+  }
+  
+  /* Zvýraznění důležitých řádků */
+  .row-start td:first-child::before {
+    content: "🚗 ";
+  }
+  
+  .row-end td:first-child::before {
+    content: "🏁 ";
+  }
+  
+  .place-cell {
+    font-weight: bold;
+  }
+  
+  /* Přidat hlavičku dokumentu */
+  .results::before {
+    content: "📋 Plán cesty - Itinerář";
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  /* Přidat datum tisku */
+  .results::after {
+    content: "Vytištěno: " attr(data-print-date);
+    display: block;
+    margin-top: 30px;
+    font-size: 12px;
+    color: #666;
+    text-align: right;
   }
 }
