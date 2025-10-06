@@ -61,10 +61,6 @@ async function handleSuggest(url, apiKey) {
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('limit', limit);
     mapyUrl.searchParams.set('lang', 'cs');
-    
-    // NOVÉ: Typy výsledků - adresy, firmy, POI
-    mapyUrl.searchParams.set('type', 'regional,regional.address,poi,poi.bus,poi.tram,poi.trolleybus');
-    
     mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {
@@ -127,9 +123,6 @@ async function handleRoute(request, apiKey) {
       return jsonResponse({ error: 'Start a end jsou povinné parametry' }, 400);
     }
 
-    // Frontend posílá: "50.0755,14.4378" (lat,lon)
-    // API chce: "14.4378,50.0755" (lon,lat)
-    
     const startCoords = start.split(',').map(c => c.trim());
     const startLon = startCoords[1];
     const startLat = startCoords[0];
@@ -141,14 +134,11 @@ async function handleRoute(request, apiKey) {
     console.log(`📍 Start: lat=${startLat}, lon=${startLon}`);
     console.log(`📍 End: lat=${endLat}, lon=${endLon}`);
 
-    // Vytvoření URL s parametry
     const mapyUrl = new URL(`${MAPY_API_BASE}/v1/routing/route`);
     
-    // Unexploded formát: "lon,lat"
     mapyUrl.searchParams.set('start', `${startLon},${startLat}`);
     mapyUrl.searchParams.set('end', `${endLon},${endLat}`);
     
-    // Waypoints - semicolon-separated "lon,lat;lon,lat"
     if (waypoints.length > 0) {
       const waypointsFormatted = waypoints.map(wp => {
         const coords = wp.split(',').map(c => c.trim());
