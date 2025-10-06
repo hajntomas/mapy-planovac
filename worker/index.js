@@ -61,6 +61,10 @@ async function handleSuggest(url, apiKey) {
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('limit', limit);
     mapyUrl.searchParams.set('lang', 'cs');
+    
+    // NOVÉ: Typy výsledků - adresy, firmy, POI
+    mapyUrl.searchParams.set('type', 'regional,regional.address,poi,poi.bus,poi.tram,poi.trolleybus');
+    
     mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {

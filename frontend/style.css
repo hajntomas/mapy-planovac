@@ -134,47 +134,27 @@ body {
 }
 
 /* ===== AUTOCOMPLETE ===== */
-.autocomplete-wrapper {
-  position: relative;
-}
-
-.autocomplete-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  max-height: 250px;
-  overflow-y: auto;
-  z-index: 100;
-  box-shadow: var(--shadow-md);
-  display: none;
-}
-
-.autocomplete-results.active {
-  display: block;
-}
-
-.autocomplete-item {
-  padding: 0.75rem;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-color);
-  transition: background var(--transition-speed);
-}
-
-.autocomplete-item:last-child {
-  border-bottom: none;
-}
-
-.autocomplete-item:hover {
-  background: var(--light-color);
-}
-
-.autocomplete-item strong {
+.autocomplete-item i {
+  margin-right: 0.5rem;
   color: var(--primary-color);
+  width: 16px;
+  text-align: center;
+}
+
+.autocomplete-item .item-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.autocomplete-item .item-location {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-left: 0.25rem;
+}
+
+.autocomplete-item .item-location::before {
+  content: "• ";
 }
 
 /* ===== WAYPOINTS ===== */

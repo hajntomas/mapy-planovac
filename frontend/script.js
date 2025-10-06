@@ -153,28 +153,42 @@ function displaySuggestions(items, resultsElement, inputElement) {
   resultsElement.innerHTML = '';
   
   items.forEach(item => {
-    // Přeskočit položky bez souřadnic (position místo location!)
+    // Přeskočit položky bez souřadnic
     if (!item.position || !item.position.lat || !item.position.lon) {
-      console.warn('Položka nemá souřadnice:', item);
       return;
     }
     
     const div = document.createElement('div');
     div.className = 'autocomplete-item';
     
+    // Ikona podle typu
+    const icon = getIconForType(item.type);
+    
     // Zvýraznění hledaného textu
     const query = inputElement.value.toLowerCase();
-    const label = item.label || item.name || '';
-    const highlighted = label.replace(
+    const name = item.name || '';
+    const label = item.label || '';
+    const location = item.location || '';
+    
+    const highlightedName = name.replace(
       new RegExp(query, 'gi'),
       match => `<strong>${match}</strong>`
     );
     
-    div.innerHTML = highlighted;
+    // Sestavení zobrazení
+    let displayText = `<i class="fas ${icon}"></i> ${highlightedName}`;
+    if (label) {
+      displayText += ` <span class="item-label">${label}</span>`;
+    }
+    if (location) {
+      displayText += ` <span class="item-location">${location}</span>`;
+    }
     
-    // Kliknutí na návrh - OPRAVENO: position místo location!
+    div.innerHTML = displayText;
+    
+    // Kliknutí na návrh
     div.addEventListener('click', () => {
-      inputElement.value = label;
+      inputElement.value = name;
       inputElement.dataset.coords = `${item.position.lat},${item.position.lon}`;
       resultsElement.classList.remove('active');
     });
@@ -188,6 +202,25 @@ function displaySuggestions(items, resultsElement, inputElement) {
   }
   
   resultsElement.classList.add('active');
+}
+
+// ===== IKONA PODLE TYPU =====
+function getIconForType(type) {
+  if (!type) return 'fa-map-marker-alt';
+  
+  if (type.startsWith('poi')) {
+    // POI - firmy, obchody, atd.
+    if (type.includes('bus') || type.includes('tram') || type.includes('trolleybus')) {
+      return 'fa-bus'; // Zastávky
+    }
+    return 'fa-building'; // Firmy/POI
+  } else if (type.includes('address')) {
+    return 'fa-home'; // Adresy
+  } else if (type.includes('municipality') || type.includes('region')) {
+    return 'fa-city'; // Města/obce
+  }
+  
+  return 'fa-map-marker-alt'; // Výchozí
 }
 
 // ===== PŘIDÁNÍ ZASTÁVKY =====
