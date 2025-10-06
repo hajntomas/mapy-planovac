@@ -188,17 +188,21 @@ function displaySuggestions(items, resultsElement, inputElement) {
     
     // Sestavení plné adresy pro input
     let fullAddress = name;
-    if (label && !label.toLowerCase().includes('město') && !label.toLowerCase().includes('kraj') && !label.toLowerCase().includes('obec')) {
-      fullAddress += `, ${label}`;
+    
+    // Pro firmy (POI) přidat location s plnou adresou
+    if (item.type === 'poi' && location) {
+      fullAddress = `${name}, ${location}`;
     }
-    if (location) {
-      fullAddress += `, ${location}`;
+    // Pro adresy přidat location s městem
+    else if (item.type === 'regional.address' && location) {
+      fullAddress = `${name}, ${location}`;
     }
+    // Pro města jen název (location je jen "Česko")
     
     // Kliknutí na návrh
     div.addEventListener('click', (e) => {
       e.stopPropagation();
-      inputElement.value = fullAddress; // Plná adresa místo jen názvu
+      inputElement.value = fullAddress;
       inputElement.dataset.coords = `${item.position.lat},${item.position.lon}`;
       resultsElement.classList.remove('active');
       resultsElement.innerHTML = '';
