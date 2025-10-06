@@ -566,6 +566,8 @@ function calculateSchedule(formData, routeData) {
       
       currentTime += duration;
       const calculatedArrival = currentTime;
+      let actualArrival = calculatedArrival;
+      let waitTime = 0;
       
       if (waypoint.isFixed && waypoint.fixedTime) {
         const fixedMinutes = timeToMinutes(waypoint.fixedTime);
@@ -575,25 +577,29 @@ function calculateSchedule(formData, routeData) {
             `Varování: Fixovaný čas na zastávce "${waypoint.address}" (${waypoint.fixedTime}) je dřív než možný příjezd (${minutesToTime(calculatedArrival)}). Trasa nebude včasná.`,
             'warning'
           );
+        } else {
+          waitTime = fixedMinutes - calculatedArrival;
         }
         
+        actualArrival = fixedMinutes;
         currentTime = fixedMinutes;
       }
       
-      const arrival = minutesToTime(calculatedArrival);
       const departure = minutesToTime(currentTime + waypoint.breakMinutes);
       currentTime += waypoint.breakMinutes;
       
       schedule.push({
         type: waypoint.isFixed ? 'waypoint-fixed' : 'waypoint',
         place: waypoint.address,
-        arrival: arrival,
+        arrival: minutesToTime(actualArrival),
+        calculatedArrival: minutesToTime(calculatedArrival),
         departure: departure,
         segmentDistance: distance,
         segmentDuration: duration,
         totalDistance: cumulativeDistance.toFixed(1),
         breakMinutes: waypoint.breakMinutes,
-        isDelayed: waypoint.isFixed && timeToMinutes(waypoint.fixedTime) < calculatedArrival
+        waitTime: waitTime,
+        isFixed: waypoint.isFixed
       });
       
     } else {
@@ -632,9 +638,14 @@ function displayResults(schedule) {
     const tr = document.createElement('tr');
     tr.className = `row-${item.type}`;
     
+    let arrivalText = item.arrival || '-';
+    if (item.isFixed && item.waitTime > 0) {
+      arrivalText += ` <small style="color: #f6c343;">(čeká ${item.waitTime} min)</small>`;
+    }
+    
     tr.innerHTML = `
       <td class="place-cell">${item.place}</td>
-      <td>${item.arrival || '-'}</td>
+      <td>${arrivalText}</td>
       <td>${item.departure || '-'}</td>
       <td>${item.segmentDistance > 0 ? item.segmentDistance + ' km' : '-'}</td>
       <td>${item.totalDistance > 0 ? item.totalDistance + ' km' : '-'}</td>
