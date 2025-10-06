@@ -175,7 +175,7 @@ function displaySuggestions(items, resultsElement, inputElement) {
       match => `<strong>${match}</strong>`
     );
     
-    // Sestavení zobrazení
+    // Sestavení zobrazení pro našeptávač
     let displayText = `<i class="fas ${icon}"></i> ${highlightedName}`;
     if (label) {
       displayText += ` <span class="item-label">${label}</span>`;
@@ -186,13 +186,22 @@ function displaySuggestions(items, resultsElement, inputElement) {
     
     div.innerHTML = displayText;
     
+    // Sestavení plné adresy pro input
+    let fullAddress = name;
+    if (label && !label.toLowerCase().includes('město') && !label.toLowerCase().includes('kraj') && !label.toLowerCase().includes('obec')) {
+      fullAddress += `, ${label}`;
+    }
+    if (location) {
+      fullAddress += `, ${location}`;
+    }
+    
     // Kliknutí na návrh
     div.addEventListener('click', (e) => {
-      e.stopPropagation(); // Zastaví propagaci eventu
-      inputElement.value = name;
+      e.stopPropagation();
+      inputElement.value = fullAddress; // Plná adresa místo jen názvu
       inputElement.dataset.coords = `${item.position.lat},${item.position.lon}`;
       resultsElement.classList.remove('active');
-      resultsElement.innerHTML = ''; // Vyčistí obsah
+      resultsElement.innerHTML = '';
     });
     
     resultsElement.appendChild(div);
@@ -204,6 +213,25 @@ function displaySuggestions(items, resultsElement, inputElement) {
   }
   
   resultsElement.classList.add('active');
+}
+
+// ===== IKONA PODLE TYPU =====
+function getIconForType(type) {
+  if (!type) return 'fa-map-marker-alt';
+  
+  if (type.startsWith('poi')) {
+    // POI - firmy, obchody, atd.
+    if (type.includes('bus') || type.includes('tram') || type.includes('trolleybus')) {
+      return 'fa-bus'; // Zastávky
+    }
+    return 'fa-building'; // Firmy/POI
+  } else if (type.includes('address')) {
+    return 'fa-home'; // Adresy
+  } else if (type.includes('municipality') || type.includes('region')) {
+    return 'fa-city'; // Města/obce
+  }
+  
+  return 'fa-map-marker-alt'; // Výchozí
 }
 
 // ===== IKONA PODLE TYPU =====
