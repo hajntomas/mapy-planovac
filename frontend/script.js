@@ -4,7 +4,6 @@
  */
 
 // ===== KONFIGURACE =====
-// DŮLEŽITÉ: Po deployi Workeru změňte tuto URL na vaši Worker URL!
 const WORKER_URL = 'https://mapy-planovac-worker.hajn-tomas.workers.dev';
 
 // ===== GLOBÁLNÍ PROMĚNNÉ =====
@@ -29,41 +28,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== MAPA - LEAFLET + MAPY.CZ TILES =====
 function initMap() {
-  // Vytvoření mapy
-  map = L.map('map').setView([49.8175, 15.4730], 7); // Střed ČR
+  map = L.map('map').setView([49.8175, 15.4730], 7);
   
-  // Mapy.cz tiles
-L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4', {
-  attribution: '&copy; <a href="https://mapy.com">Mapy.com</a>',
-  maxZoom: 19
-}).addTo(map);
+  L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4', {
+    attribution: '&copy; <a href="https://mapy.com">Mapy.com</a>',
+    maxZoom: 19
+  }).addTo(map);
   
-  // Vrstvy pro markery a trasu
   markersLayer = L.layerGroup().addTo(map);
   routeLayer = L.layerGroup().addTo(map);
 }
 
 // ===== EVENT LISTENERS =====
 function initEventListeners() {
-  // Formulář
   document.getElementById('routeForm').addEventListener('submit', handleFormSubmit);
-  document.getElementById('resetForm').addEventListener('reset', handleReset);
+  document.getElementById('resetForm').addEventListener('click', handleReset);
   document.getElementById('addWaypoint').addEventListener('click', addWaypoint);
   
-  // Autocomplete pro start a cíl
   setupAutocomplete('start', 'startAutocomplete');
   setupAutocomplete('end', 'endAutocomplete');
   
-  // Export akce
   document.getElementById('copyToClipboard').addEventListener('click', copyToClipboard);
   document.getElementById('printSchedule').addEventListener('click', printSchedule);
   document.getElementById('openInMapy').addEventListener('click', openInMapy);
   
-  // Sidebar toggle (mobil)
   document.getElementById('openSidebar').addEventListener('click', openSidebar);
   document.getElementById('closeSidebar').addEventListener('click', closeSidebar);
   
-  // Online/Offline detekce
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 }
@@ -84,22 +75,18 @@ function setupAutocomplete(inputId, resultsId) {
   input.addEventListener('input', (e) => {
     const query = e.target.value.trim();
     
-    // Zrušení předchozího timeru
     clearTimeout(debounceTimer);
     
-    // Skrytí výsledků pokud je query příliš krátké
     if (query.length < 2) {
       results.classList.remove('active');
       return;
     }
     
-    // Debounce 400ms
     debounceTimer = setTimeout(() => {
       fetchSuggestions(query, results, input);
     }, 400);
   });
   
-  // Zavření autocomplete při kliknutí mimo
   document.addEventListener('click', (e) => {
     if (!input.contains(e.target) && !results.contains(e.target)) {
       results.classList.remove('active');
@@ -127,14 +114,6 @@ async function fetchSuggestions(query, resultsElement, inputElement) {
     
     const data = await response.json();
     
-    // DOČASNÉ LOGOVÁNÍ - zjistíme strukturu
-    console.log('🔍 Celá odpověď:', data);
-    if (data.items && data.items.length > 0) {
-      console.log('🔍 První položka:', data.items[0]);
-      console.log('🔍 Struktura první položky:', JSON.stringify(data.items[0], null, 2));
-    }
-    
-    // Zobrazení výsledků
     if (data.items && data.items.length > 0) {
       displaySuggestions(data.items, resultsElement, inputElement);
     } else {
@@ -153,7 +132,6 @@ function displaySuggestions(items, resultsElement, inputElement) {
   resultsElement.innerHTML = '';
   
   items.forEach(item => {
-    // Přeskočit položky bez souřadnic
     if (!item.position || !item.position.lat || !item.position.lon) {
       return;
     }
@@ -161,10 +139,8 @@ function displaySuggestions(items, resultsElement, inputElement) {
     const div = document.createElement('div');
     div.className = 'autocomplete-item';
     
-    // Ikona podle typu
     const icon = getIconForType(item.type);
     
-    // Zvýraznění hledaného textu
     const query = inputElement.value.toLowerCase();
     const name = item.name || '';
     const label = item.label || '';
@@ -175,7 +151,6 @@ function displaySuggestions(items, resultsElement, inputElement) {
       match => `<strong>${match}</strong>`
     );
     
-    // Sestavení zobrazení pro našeptávač
     let displayText = `<i class="fas ${icon}"></i> ${highlightedName}`;
     if (label) {
       displayText += ` <span class="item-label">${label}</span>`;
@@ -186,20 +161,14 @@ function displaySuggestions(items, resultsElement, inputElement) {
     
     div.innerHTML = displayText;
     
-    // Sestavení plné adresy pro input
     let fullAddress = name;
     
-    // Pro firmy (POI) přidat location s plnou adresou
     if (item.type === 'poi' && location) {
       fullAddress = `${name}, ${location}`;
-    }
-    // Pro adresy přidat location s městem
-    else if (item.type === 'regional.address' && location) {
+    } else if (item.type === 'regional.address' && location) {
       fullAddress = `${name}, ${location}`;
     }
-    // Pro města jen název (location je jen "Česko")
     
-    // Kliknutí na návrh
     div.addEventListener('click', (e) => {
       e.stopPropagation();
       inputElement.value = fullAddress;
@@ -211,7 +180,6 @@ function displaySuggestions(items, resultsElement, inputElement) {
     resultsElement.appendChild(div);
   });
   
-  // Pokud nezbyla žádná položka se souřadnicemi
   if (resultsElement.children.length === 0) {
     resultsElement.innerHTML = '<div class="autocomplete-item">Žádné výsledky</div>';
   }
@@ -224,56 +192,17 @@ function getIconForType(type) {
   if (!type) return 'fa-map-marker-alt';
   
   if (type.startsWith('poi')) {
-    // POI - firmy, obchody, atd.
     if (type.includes('bus') || type.includes('tram') || type.includes('trolleybus')) {
-      return 'fa-bus'; // Zastávky
+      return 'fa-bus';
     }
-    return 'fa-building'; // Firmy/POI
+    return 'fa-building';
   } else if (type.includes('address')) {
-    return 'fa-home'; // Adresy
+    return 'fa-home';
   } else if (type.includes('municipality') || type.includes('region')) {
-    return 'fa-city'; // Města/obce
+    return 'fa-city';
   }
   
-  return 'fa-map-marker-alt'; // Výchozí
-}
-
-// ===== IKONA PODLE TYPU =====
-function getIconForType(type) {
-  if (!type) return 'fa-map-marker-alt';
-  
-  if (type.startsWith('poi')) {
-    // POI - firmy, obchody, atd.
-    if (type.includes('bus') || type.includes('tram') || type.includes('trolleybus')) {
-      return 'fa-bus'; // Zastávky
-    }
-    return 'fa-building'; // Firmy/POI
-  } else if (type.includes('address')) {
-    return 'fa-home'; // Adresy
-  } else if (type.includes('municipality') || type.includes('region')) {
-    return 'fa-city'; // Města/obce
-  }
-  
-  return 'fa-map-marker-alt'; // Výchozí
-}
-
-// ===== IKONA PODLE TYPU =====
-function getIconForType(type) {
-  if (!type) return 'fa-map-marker-alt';
-  
-  if (type.startsWith('poi')) {
-    // POI - firmy, obchody, atd.
-    if (type.includes('bus') || type.includes('tram') || type.includes('trolleybus')) {
-      return 'fa-bus'; // Zastávky
-    }
-    return 'fa-building'; // Firmy/POI
-  } else if (type.includes('address')) {
-    return 'fa-home'; // Adresy
-  } else if (type.includes('municipality') || type.includes('region')) {
-    return 'fa-city'; // Města/obce
-  }
-  
-  return 'fa-map-marker-alt'; // Výchozí
+  return 'fa-map-marker-alt';
 }
 
 // ===== PŘIDÁNÍ ZASTÁVKY =====
@@ -328,10 +257,8 @@ function addWaypoint() {
   
   container.appendChild(waypointDiv);
   
-  // Setup autocomplete pro novou zastávku
   setupAutocomplete(`waypoint-${waypointCounter}`, `waypoint-${waypointCounter}-autocomplete`);
   
-  // Event listener pro checkbox fixace času
   const checkbox = document.getElementById(`waypoint-${waypointCounter}-fixed`);
   const timeInput = document.getElementById(`waypoint-${waypointCounter}-time`);
   
@@ -360,37 +287,28 @@ async function handleFormSubmit(e) {
     return;
   }
   
-  // Validace
   const validation = validateForm();
   if (!validation.valid) {
     showNotification(validation.message, 'error');
     return;
   }
   
-  // Zobrazení loaderu
   showLoader(true);
   
   try {
-    // Získání dat z formuláře
     const formData = getFormData();
     
-    // Geokódování adres (pokud nemají souřadnice)
     await geocodeAddresses(formData);
     
-    // Výpočet trasy
     const route = await calculateRoute(formData);
     
-    // Výpočet časového harmonogramu
     const schedule = calculateSchedule(formData, route);
     
-    // Uložení dat pro export
     routeData = route;
     scheduleData = schedule;
     
-    // Zobrazení výsledků
     displayResults(schedule);
     
-    // Vykreslení na mapě
     displayRouteOnMap(route, formData);
     
     showNotification('Trasa úspěšně naplánována!', 'success');
@@ -421,7 +339,6 @@ function validateForm() {
     return { valid: false, message: 'Zadejte prosím čas odjezdu.' };
   }
   
-  // Validace zastávek
   const waypoints = document.querySelectorAll('.waypoint-group');
   let previousTime = timeToMinutes(departureTime);
   
@@ -476,7 +393,6 @@ function getFormData() {
     waypoints: []
   };
   
-  // Zastávky
   const waypointGroups = document.querySelectorAll('.waypoint-group');
   waypointGroups.forEach(group => {
     const id = group.dataset.waypointId;
@@ -495,19 +411,16 @@ function getFormData() {
 
 // ===== GEOKÓDOVÁNÍ ADRES =====
 async function geocodeAddresses(formData) {
-  // Geokódování startu
   if (!formData.start.coords) {
     const coords = await geocodeAddress(formData.start.address);
     formData.start.coords = coords;
   }
   
-  // Geokódování cíle
   if (!formData.end.coords) {
     const coords = await geocodeAddress(formData.end.address);
     formData.end.coords = coords;
   }
   
-  // Geokódování zastávek
   for (let waypoint of formData.waypoints) {
     if (!waypoint.coords) {
       waypoint.coords = await geocodeAddress(waypoint.address);
@@ -532,7 +445,7 @@ async function geocodeAddress(address) {
     
     if (data.items && data.items.length > 0) {
       const item = data.items[0];
-      return `${item.location.lat},${item.location.lon}`;
+      return `${item.position.lat},${item.position.lon}`;
     } else {
       throw new Error(`Adresa nenalezena: ${address}`);
     }
@@ -542,45 +455,79 @@ async function geocodeAddress(address) {
   }
 }
 
-// ===== VÝPOČET TRASY =====
+// ===== VÝPOČET TRASY S JEDNOTLIVÝMI ÚSEKY =====
 async function calculateRoute(formData) {
-  const waypoints = formData.waypoints.map(w => w.coords);
-  
-  const body = {
-    start: formData.start.coords,
-    end: formData.end.coords,
-    waypoints: waypoints
-  };
-  
   try {
-    const response = await fetchWithTimeout(
-      `${WORKER_URL}/api/route`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      },
-      15000
-    );
+    const allPoints = [
+      { coords: formData.start.coords, address: formData.start.address },
+      ...formData.waypoints.map(w => ({ coords: w.coords, address: w.address })),
+      { coords: formData.end.coords, address: formData.end.address }
+    ];
     
-    if (!response.ok) {
-      throw new Error(`Chyba při výpočtu trasy (HTTP ${response.status})`);
+    const legs = [];
+    
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      const from = allPoints[i];
+      const to = allPoints[i + 1];
+      
+      console.log(`🚗 Počítám úsek ${i + 1}: ${from.address} → ${to.address}`);
+      
+      const body = {
+        start: from.coords,
+        end: to.coords,
+        waypoints: []
+      };
+      
+      const response = await fetchWithTimeout(
+        `${WORKER_URL}/api/route`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        },
+        15000
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Chyba při výpočtu úseku ${i + 1} (HTTP ${response.status})`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.length || !data.duration) {
+        throw new Error(`Úsek ${i + 1} nebyl nalezen`);
+      }
+      
+      legs.push({
+        from: from.address,
+        to: to.address,
+        distance: data.length,
+        duration: data.duration,
+        geometry: data.geometry
+      });
+      
+      console.log(`✅ Úsek ${i + 1}: ${(data.length / 1000).toFixed(1)} km, ${Math.round(data.duration / 60)} min`);
     }
     
-    const data = await response.json();
+    const totalDistance = legs.reduce((sum, leg) => sum + leg.distance, 0);
+    const totalDuration = legs.reduce((sum, leg) => sum + leg.duration, 0);
     
-    // OPRAVENO: API vrací přímo length/duration/geometry, ne data.route
-    if (!data.length || !data.duration || !data.geometry) {
-      throw new Error('Trasa nebyla nalezena.');
-    }
+    const allCoordinates = [];
+    legs.forEach(leg => {
+      if (leg.geometry && leg.geometry.geometry && leg.geometry.geometry.coordinates) {
+        allCoordinates.push(...leg.geometry.geometry.coordinates);
+      }
+    });
     
-    // Přeformátování odpovědi do očekávané struktury
     return {
       route: {
-        length: data.length,
-        duration: data.duration,
-        geometry: data.geometry.geometry, // geometry je zanořené
-        legs: [] // TODO: API nevrací legs, musíme to vyřešit jinak
+        length: totalDistance,
+        duration: totalDuration,
+        geometry: {
+          type: 'LineString',
+          coordinates: allCoordinates
+        },
+        legs: legs
       }
     };
     
@@ -594,83 +541,90 @@ function calculateSchedule(formData, routeData) {
   const schedule = [];
   let currentTime = timeToMinutes(formData.departureTime);
   
-  // Celková vzdálenost a čas z API
-  const totalDistance = (routeData.route.length / 1000).toFixed(1); // metry na km
-  const totalDuration = Math.round(routeData.route.duration / 60); // sekundy na minuty
+  const legs = routeData.route.legs || [];
+  let cumulativeDistance = 0;
   
-  // Start
   schedule.push({
     type: 'start',
     place: formData.start.address,
     arrival: null,
     departure: minutesToTime(currentTime),
     segmentDistance: 0,
+    segmentDuration: 0,
     totalDistance: 0
   });
   
-  // Zastávky - bez legs musíme počítat proporcionálně
-  // (Pro správné fungování by bylo potřeba volat API pro každý úsek zvlášť)
-  const numSegments = formData.waypoints.length + 1;
-  const avgSegmentDistance = parseFloat(totalDistance) / numSegments;
-  const avgSegmentDuration = totalDuration / numSegments;
-  
-  let cumulativeDistance = 0;
-  
-  for (let i = 0; i < formData.waypoints.length; i++) {
-    const waypoint = formData.waypoints[i];
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
+    const distance = (leg.distance / 1000).toFixed(1);
+    const duration = Math.round(leg.duration / 60);
     
-    currentTime += avgSegmentDuration;
-    cumulativeDistance += avgSegmentDistance;
+    cumulativeDistance += parseFloat(distance);
     
-    const arrival = minutesToTime(Math.round(currentTime));
-    
-    // Pokud je fixovaný čas, použij ho
-    if (waypoint.isFixed && waypoint.fixedTime) {
-      const fixedMinutes = timeToMinutes(waypoint.fixedTime);
-      currentTime = fixedMinutes;
+    if (i < formData.waypoints.length) {
+      const waypoint = formData.waypoints[i];
+      
+      currentTime += duration;
+      const calculatedArrival = currentTime;
+      
+      if (waypoint.isFixed && waypoint.fixedTime) {
+        const fixedMinutes = timeToMinutes(waypoint.fixedTime);
+        
+        if (fixedMinutes < calculatedArrival) {
+          showNotification(
+            `Varování: Fixovaný čas na zastávce "${waypoint.address}" (${waypoint.fixedTime}) je dřív než možný příjezd (${minutesToTime(calculatedArrival)}). Trasa nebude včasná.`,
+            'warning'
+          );
+        }
+        
+        currentTime = fixedMinutes;
+      }
+      
+      const arrival = minutesToTime(calculatedArrival);
+      const departure = minutesToTime(currentTime + waypoint.breakMinutes);
+      currentTime += waypoint.breakMinutes;
+      
+      schedule.push({
+        type: waypoint.isFixed ? 'waypoint-fixed' : 'waypoint',
+        place: waypoint.address,
+        arrival: arrival,
+        departure: departure,
+        segmentDistance: distance,
+        segmentDuration: duration,
+        totalDistance: cumulativeDistance.toFixed(1),
+        breakMinutes: waypoint.breakMinutes,
+        isDelayed: waypoint.isFixed && timeToMinutes(waypoint.fixedTime) < calculatedArrival
+      });
+      
+    } else {
+      currentTime += duration;
+      
+      schedule.push({
+        type: 'end',
+        place: formData.end.address,
+        arrival: minutesToTime(currentTime),
+        departure: null,
+        segmentDistance: distance,
+        segmentDuration: duration,
+        totalDistance: cumulativeDistance.toFixed(1)
+      });
     }
-    
-    const departure = minutesToTime(Math.round(currentTime + waypoint.breakMinutes));
-    currentTime += waypoint.breakMinutes;
-    
-    schedule.push({
-      type: waypoint.isFixed ? 'waypoint-fixed' : 'waypoint',
-      place: waypoint.address,
-      arrival: arrival,
-      departure: departure,
-      segmentDistance: avgSegmentDistance.toFixed(1),
-      totalDistance: cumulativeDistance.toFixed(1),
-      breakMinutes: waypoint.breakMinutes
-    });
   }
   
-  // Cíl
-  currentTime += avgSegmentDuration;
-  cumulativeDistance += avgSegmentDistance;
-  
-  schedule.push({
-    type: 'end',
-    place: formData.end.address,
-    arrival: minutesToTime(Math.round(currentTime)),
-    departure: null,
-    segmentDistance: avgSegmentDistance.toFixed(1),
-    totalDistance: totalDistance
-  });
+  const totalTime = currentTime - timeToMinutes(formData.departureTime);
   
   return {
     items: schedule,
-    totalDistance: totalDistance,
-    totalTime: Math.round((currentTime - timeToMinutes(formData.departureTime)))
+    totalDistance: cumulativeDistance.toFixed(1),
+    totalTime: totalTime
   };
 }
 
 // ===== ZOBRAZENÍ VÝSLEDKŮ =====
 function displayResults(schedule) {
-  // Souhrn
   document.getElementById('totalDistance').textContent = `${schedule.totalDistance} km`;
   document.getElementById('totalTime').textContent = `${schedule.totalTime} min`;
   
-  // Tabulka
   const tbody = document.getElementById('scheduleBody');
   tbody.innerHTML = '';
   
@@ -689,17 +643,14 @@ function displayResults(schedule) {
     tbody.appendChild(tr);
   });
   
-  // Zobrazení sekce výsledků
   document.getElementById('results').style.display = 'block';
 }
 
 // ===== VYKRESLENÍ TRASY NA MAPĚ =====
 function displayRouteOnMap(routeData, formData) {
-  // Vyčištění předchozích vrstev
   markersLayer.clearLayers();
   routeLayer.clearLayers();
   
-  // Vykreslení trasy
   if (routeData.route && routeData.route.geometry) {
     const coordinates = routeData.route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
     L.polyline(coordinates, {
@@ -709,16 +660,13 @@ function displayRouteOnMap(routeData, formData) {
     }).addTo(routeLayer);
   }
   
-  // Markery
   const startCoords = formData.start.coords.split(',').map(Number);
   const endCoords = formData.end.coords.split(',').map(Number);
   
-  // Start marker (zelená vlajka)
   L.marker(startCoords, {
     icon: createCustomIcon('success', 'fa-flag-checkered')
   }).addTo(markersLayer).bindPopup(`<strong>Start:</strong><br>${formData.start.address}`);
   
-  // Zastávky (modré piny)
   formData.waypoints.forEach((waypoint, index) => {
     const coords = waypoint.coords.split(',').map(Number);
     L.marker(coords, {
@@ -726,12 +674,10 @@ function displayRouteOnMap(routeData, formData) {
     }).addTo(markersLayer).bindPopup(`<strong>Zastávka ${index + 1}:</strong><br>${waypoint.address}`);
   });
   
-  // Cíl (červený marker)
   L.marker(endCoords, {
     icon: createCustomIcon('danger', 'fa-map-marker-alt')
   }).addTo(markersLayer).bindPopup(`<strong>Cíl:</strong><br>${formData.end.address}`);
   
-  // Zoom na celou trasu
   const bounds = L.latLngBounds([startCoords]);
   formData.waypoints.forEach(w => {
     bounds.extend(w.coords.split(',').map(Number));
@@ -810,16 +756,9 @@ function openInMapy() {
   
   const formData = getFormData();
   
-  // Sestavení URL pro Mapy.cz
   let url = 'https://mapy.cz/zakladni?';
-  
-  // Trasa
   url += `x=${formData.start.coords.split(',')[1]}`;
   url += `&y=${formData.start.coords.split(',')[0]}`;
-  
-  // Více bodů trasy - Mapy.cz formát
-  // Bohužel Mapy.cz nemají veřejné API pro přímé otevření trasy s waypoints
-  // Otevřeme alespoň základní mapu se startem
   
   window.open(url, '_blank');
   showNotification('Otevírám v Mapy.cz...', 'success');
@@ -886,12 +825,10 @@ function showNotification(message, type = 'error') {
   
   container.appendChild(notification);
   
-  // Kliknutí pro zavření
   notification.addEventListener('click', () => {
     notification.remove();
   });
   
-  // Auto-hide po 5 sekundách
   setTimeout(() => {
     notification.remove();
   }, 5000);
@@ -904,20 +841,17 @@ function showLoader(show) {
 
 // ===== POMOCNÉ FUNKCE =====
 
-// Převod času HH:MM na minuty od půlnoci
 function timeToMinutes(time) {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
 }
 
-// Převod minut od půlnoci na HH:MM
 function minutesToTime(minutes) {
   const hours = Math.floor(minutes / 60) % 24;
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
-// Fetch s timeoutem
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
