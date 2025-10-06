@@ -18,6 +18,9 @@ let isOnline = navigator.onLine;
 let routeData = null;
 let scheduleData = null;
 
+// Drag & Drop
+let draggedElement = null;
+
 // ===== INICIALIZACE =====
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
@@ -213,9 +216,13 @@ function addWaypoint() {
   const waypointDiv = document.createElement('div');
   waypointDiv.className = 'waypoint-group';
   waypointDiv.dataset.waypointId = waypointCounter;
+  waypointDiv.draggable = true;
   
   waypointDiv.innerHTML = `
     <div class="waypoint-header">
+      <div class="drag-handle">
+        <i class="fas fa-grip-vertical"></i>
+      </div>
       <h3><i class="fas fa-map-pin"></i> Zastávka ${waypointCounter}</h3>
       <button type="button" class="remove-waypoint" onclick="removeWaypoint(${waypointCounter})">
         <i class="fas fa-trash"></i> Odebrat
@@ -268,6 +275,91 @@ function addWaypoint() {
       timeInput.value = '';
     }
   });
+  
+  // Drag & Drop event listeners
+  setupDragAndDrop(waypointDiv);
+  
+  // Přečíslovat zastávky
+  renumberWaypoints();
+}
+
+// ===== DRAG & DROP SETUP =====
+function setupDragAndDrop(element) {
+  element.addEventListener('dragstart', handleDragStart);
+  element.addEventListener('dragend', handleDragEnd);
+  element.addEventListener('dragover', handleDragOver);
+  element.addEventListener('drop', handleDrop);
+  element.addEventListener('dragenter', handleDragEnter);
+  element.addEventListener('dragleave', handleDragLeave);
+}
+
+function handleDragStart(e) {
+  draggedElement = this;
+  this.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragEnd(e) {
+  this.style.opacity = '1';
+  
+  // Odstranit všechny drag-over třídy
+  document.querySelectorAll('.waypoint-group').forEach(item => {
+    item.classList.remove('drag-over');
+  });
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function handleDragEnter(e) {
+  if (this !== draggedElement) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+  
+  if (draggedElement !== this) {
+    const container = document.getElementById('waypointsContainer');
+    const allWaypoints = Array.from(container.children);
+    
+    const draggedIndex = allWaypoints.indexOf(draggedElement);
+    const targetIndex = allWaypoints.indexOf(this);
+    
+    if (draggedIndex < targetIndex) {
+      container.insertBefore(draggedElement, this.nextSibling);
+    } else {
+      container.insertBefore(draggedElement, this);
+    }
+    
+    // Přečíslovat zastávky
+    renumberWaypoints();
+  }
+  
+  return false;
+}
+
+// ===== PŘEČÍSLOVÁNÍ ZASTÁVEK =====
+function renumberWaypoints() {
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  waypoints.forEach((waypoint, index) => {
+    const header = waypoint.querySelector('h3');
+    const icon = header.querySelector('i');
+    header.innerHTML = `${icon.outerHTML} Zastávka ${index + 1}`;
+  });
 }
 
 // ===== ODEBRÁNÍ ZASTÁVKY =====
@@ -275,6 +367,7 @@ function removeWaypoint(id) {
   const waypoint = document.querySelector(`[data-waypoint-id="${id}"]`);
   if (waypoint) {
     waypoint.remove();
+    renumberWaypoints();
   }
 }
 
@@ -291,6 +384,21 @@ async function handleFormSubmit(e) {
   if (!validation.valid) {
     showNotification(validation.message, 'error');
     return;
+  }
+  
+  // Kontrola časů po případném přesunutí
+  const timeCheck = checkFixedTimesOrder();
+  if (!timeCheck.valid) {
+    showNotification(timeCheck.message, 'warning');
+    
+    // Nabídnout automatickou opravu
+    if (confirm(timeCheck.message + '\n\nChcete automaticky upravit fixované časy podle nového pořadí?')) {
+      adjustFixedTimes();
+      showNotification('Časy byly upraveny. Zkontrolujte je prosím a naplánujte trasu znovu.', 'success');
+      return;
+    } else {
+      return;
+    }
   }
   
   showLoader(true);
@@ -321,6 +429,83 @@ async function handleFormSubmit(e) {
   }
 }
 
+// ===== KONTROLA POŘADÍ FIXOVANÝCH ČASŮ =====
+function checkFixedTimesOrder() {
+  const departureTime = document.getElementById('departureTime').value;
+  let previousTime = timeToMinutes(departureTime);
+  let previousLabel = 'odjezd';
+  
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  const issues = [];
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const id = waypoints[i].dataset.waypointId;
+    const address = document.getElementById(`waypoint-${id}`).value.trim();
+    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
+    const fixedTime = document.getElementById(`waypoint-${id}-time`).value;
+    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
+    
+    if (isFixed && fixedTime) {
+      const fixedMinutes = timeToMinutes(fixedTime);
+      
+      if (fixedMinutes <= previousTime) {
+        issues.push({
+          waypointNumber: i + 1,
+          address: address,
+          currentTime: fixedTime,
+          previousTime: minutesToTime(previousTime),
+          previousLabel: previousLabel,
+          minimalTime: minutesToTime(previousTime + 1)
+        });
+      }
+      
+      previousTime = fixedMinutes + breakMinutes;
+      previousLabel = `zastávka ${i + 1}`;
+    }
+  }
+  
+  if (issues.length > 0) {
+    let message = 'Fixované časy nejsou v správném pořadí po přesunutí zastávek:\n\n';
+    issues.forEach(issue => {
+      message += `• Zastávka ${issue.waypointNumber} (${issue.address}): \n`;
+      message += `  Fixovaný čas ${issue.currentTime} je dřív nebo roven času ${issue.previousTime} na ${issue.previousLabel}\n`;
+      message += `  Doporučený minimální čas: ${issue.minimalTime}\n\n`;
+    });
+    
+    return { valid: false, message: message.trim(), issues: issues };
+  }
+  
+  return { valid: true };
+}
+
+// ===== AUTOMATICKÁ ÚPRAVA FIXOVANÝCH ČASŮ =====
+function adjustFixedTimes() {
+  const departureTime = document.getElementById('departureTime').value;
+  let previousTime = timeToMinutes(departureTime);
+  
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const id = waypoints[i].dataset.waypointId;
+    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
+    const timeInput = document.getElementById(`waypoint-${id}-time`);
+    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
+    
+    if (isFixed && timeInput.value) {
+      const fixedMinutes = timeToMinutes(timeInput.value);
+      
+      // Pokud je čas dřív než předchozí, nastavit na předchozí + 30 minut
+      if (fixedMinutes <= previousTime) {
+        const newTime = previousTime + 30;
+        timeInput.value = minutesToTime(newTime);
+        previousTime = newTime + breakMinutes;
+      } else {
+        previousTime = fixedMinutes + breakMinutes;
+      }
+    }
+  }
+}
+
 // ===== VALIDACE FORMULÁŘE =====
 function validateForm() {
   const start = document.getElementById('start').value.trim();
@@ -340,7 +525,6 @@ function validateForm() {
   }
   
   const waypoints = document.querySelectorAll('.waypoint-group');
-  let previousTime = timeToMinutes(departureTime);
   
   for (let i = 0; i < waypoints.length; i++) {
     const id = waypoints[i].dataset.waypointId;
@@ -357,21 +541,8 @@ function validateForm() {
       return { valid: false, message: `Přestávka na zastávce ${i + 1} nesmí být záporná.` };
     }
     
-    if (isFixed) {
-      if (!fixedTime) {
-        return { valid: false, message: `Zadejte fixovaný čas pro zastávku ${i + 1}.` };
-      }
-      
-      const fixedMinutes = timeToMinutes(fixedTime);
-      
-      if (fixedMinutes <= previousTime) {
-        return { 
-          valid: false, 
-          message: `Fixovaný čas zastávky ${i + 1} (${fixedTime}) musí být po předchozím času (${minutesToTime(previousTime)}).` 
-        };
-      }
-      
-      previousTime = fixedMinutes + breakMinutes;
+    if (isFixed && !fixedTime) {
+      return { valid: false, message: `Zadejte fixovaný čas pro zastávku ${i + 1}.` };
     }
   }
   
