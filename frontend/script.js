@@ -800,7 +800,7 @@ function calculateSchedule(formData, routeData) {
 // ===== ZOBRAZENÍ VÝSLEDKŮ =====
 function displayResults(schedule) {
   document.getElementById('totalDistance').textContent = `${schedule.totalDistance} km`;
-  document.getElementById('totalTime').textContent = `${schedule.totalTime} min`;
+  document.getElementById('totalTime').textContent = formatDuration(schedule.totalTime);
   
   const tbody = document.getElementById('scheduleBody');
   tbody.innerHTML = '';
@@ -908,7 +908,7 @@ async function copyToClipboard() {
   
   let text = '🗺️ PLÁN CESTY\n\n';
   text += `📍 Celková vzdálenost: ${scheduleData.totalDistance} km\n`;
-  text += `⏱️ Celkový čas: ${scheduleData.totalTime} min\n\n`;
+  text += `⏱️ Celkový čas: ${formatDuration(scheduleData.totalTime)}\n\n`;
   text += '─'.repeat(50) + '\n\n';
   
   scheduleData.items.forEach(item => {
@@ -1078,6 +1078,19 @@ function minutesToTime(minutes) {
   const hours = Math.floor(minutes / 60) % 24;
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+function formatDuration(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  if (hours === 0) {
+    return `${minutes} min`;
+  } else if (minutes === 0) {
+    return `${hours} h`;
+  } else {
+    return `${hours} h ${minutes} min`;
+  }
 }
 
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
