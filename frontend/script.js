@@ -929,14 +929,53 @@ async function copyToClipboard() {
 
 // ===== EXPORT - TISK =====
 function printSchedule() {
-  // Přidat datum do results pro tisk
+  // Najdi původní výsledky
   const results = document.getElementById('results');
-  const now = new Date();
-  const dateStr = `${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-  results.setAttribute('data-print-date', dateStr);
+  if (!results) return;
   
-  // Spustit tisk
-  window.print();
+  // Vytvoř print kontejner
+  const printContainer = document.createElement('div');
+  printContainer.className = 'print-container';
+  
+  // Přidej hlavičku
+  const header = document.createElement('h1');
+  header.textContent = 'Plán cesty - Itinerář';
+  printContainer.appendChild(header);
+  
+  // Naklonuj souhrn (celková vzdálenost a čas)
+  const summary = results.querySelector('.summary');
+  if (summary) {
+    const summaryClone = summary.cloneNode(true);
+    printContainer.appendChild(summaryClone);
+  }
+  
+  // Naklonuj tabulku
+  const scheduleTable = results.querySelector('.schedule-table');
+  if (scheduleTable) {
+    const tableClone = scheduleTable.cloneNode(true);
+    printContainer.appendChild(tableClone);
+  }
+  
+  // Přidej datum tisku
+  const now = new Date();
+  const dateStr = `Vytištěno: ${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()} v ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const printDate = document.createElement('div');
+  printDate.className = 'print-date';
+  printDate.textContent = dateStr;
+  printContainer.appendChild(printDate);
+  
+  // Přidej do body
+  document.body.appendChild(printContainer);
+  
+  // Počkej na vykreslení a tiskni
+  setTimeout(() => {
+    window.print();
+    
+    // Po tisku (nebo zavření dialogu) ukliď
+    setTimeout(() => {
+      document.body.removeChild(printContainer);
+    }, 100);
+  }, 100);
 }
 
 // ===== EXPORT - OTEVŘENÍ V MAPY.CZ =====
