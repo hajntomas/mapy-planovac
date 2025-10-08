@@ -828,38 +828,43 @@ function displayResults(schedule) {
   document.getElementById('results').style.display = 'block';
 }
 
-// ===== VYKRESLENÍ TRASY NA MAPĚ =====
+// Nová verze displayRouteOnMap s číslovanými markery
 function displayRouteOnMap(routeData, formData) {
   markersLayer.clearLayers();
   routeLayer.clearLayers();
   
+  // Vykreslit trasu (modrá čára)
   if (routeData.route && routeData.route.geometry) {
     const coordinates = routeData.route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
     L.polyline(coordinates, {
-      color: '#2c7be5',
+      color: '#4A90E2', // Světlejší modrá pro lepší kontrast
       weight: 5,
-      opacity: 0.7
+      opacity: 0.8
     }).addTo(routeLayer);
   }
   
   const startCoords = formData.start.coords.split(',').map(Number);
   const endCoords = formData.end.coords.split(',').map(Number);
   
+  // START - zelený marker s vlajkou
   L.marker(startCoords, {
-    icon: createCustomIcon('success', 'fa-flag-checkered')
+    icon: createCustomIcon('start', null)
   }).addTo(markersLayer).bindPopup(`<strong>Start:</strong><br>${formData.start.address}`);
   
+  // ZASTÁVKY - červené markery s čísly
   formData.waypoints.forEach((waypoint, index) => {
     const coords = waypoint.coords.split(',').map(Number);
     L.marker(coords, {
-      icon: createCustomIcon(waypoint.isFixed ? 'warning' : 'primary', 'fa-map-pin')
+      icon: createCustomIcon('waypoint', index + 1)
     }).addTo(markersLayer).bindPopup(`<strong>Zastávka ${index + 1}:</strong><br>${waypoint.address}`);
   });
   
+  // CÍL - zelený marker s textem "CÍL"
   L.marker(endCoords, {
-    icon: createCustomIcon('danger', 'fa-map-marker-alt')
+    icon: createCustomIcon('end', null)
   }).addTo(markersLayer).bindPopup(`<strong>Cíl:</strong><br>${formData.end.address}`);
   
+  // Přizpůsobit zoom aby bylo vidět celou trasu
   const bounds = L.latLngBounds([startCoords]);
   formData.waypoints.forEach(w => {
     bounds.extend(w.coords.split(',').map(Number));
@@ -869,36 +874,68 @@ function displayRouteOnMap(routeData, formData) {
   map.fitBounds(bounds, { padding: [50, 50] });
 }
 
-// ===== VLASTNÍ IKONY PRO MARKERY =====
-function createCustomIcon(color, iconClass) {
-  const colorMap = {
-    success: '#00b074',
-    primary: '#2c7be5',
-    warning: '#f6c343',
-    danger: '#e63757'
-  };
+// ===== UPRAVENÉ FUNKCE PRO ČÍSLOVANÉ MARKERY =====
+
+// Nová verze createCustomIcon s podporou čísel a textu
+function createCustomIcon(type, content) {
+  let backgroundColor, borderColor;
+  
+  // Určení barvy podle typu
+  switch(type) {
+    case 'start':
+      backgroundColor = '#00AA00'; // Zelená Mapy.cz
+      borderColor = '#008800';
+      break;
+    case 'waypoint':
+      backgroundColor = '#DC3545'; // Červená
+      borderColor = '#C82333';
+      break;
+    case 'end':
+      backgroundColor = '#00AA00'; // Zelená Mapy.cz
+      borderColor = '#008800';
+      break;
+    default:
+      backgroundColor = '#00AA00';
+      borderColor = '#008800';
+  }
+  
+  // HTML pro marker
+  let innerContent;
+  if (type === 'start') {
+    // Start - ikona vlajky
+    innerContent = '<i class="fas fa-flag-checkered" style="font-size: 16px;"></i>';
+  } else if (type === 'waypoint') {
+    // Zastávka - číslo
+    innerContent = `<span style="font-size: 18px; font-weight: bold;">${content}</span>`;
+  } else if (type === 'end') {
+    // Cíl - text "CÍL"
+    innerContent = '<span style="font-size: 11px; font-weight: bold;">CÍL</span>';
+  }
   
   const html = `
     <div style="
-      background: ${colorMap[color]};
-      width: 32px;
-      height: 32px;
+      background: ${backgroundColor};
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
+      border: 3px solid white;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
-      <i class="fas ${iconClass}" style="font-size: 16px;"></i>
+      ${innerContent}
     </div>
   `;
   
   return L.divIcon({
     html: html,
     className: '',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20]
   });
 }
 
