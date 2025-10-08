@@ -1,6 +1,6 @@
 /* 
- * Plánovač cest - Mapy.cz Design
- * Responzivní CSS styly v barvách Mapy.cz
+ * Plánovač cest - Mapy.cz Design (Kompaktní verze)
+ * Optimalizováno pro lepší využití prostoru
  */
 
 /* ===== PROMĚNNÉ - MAPY.CZ STYL ===== */
@@ -39,8 +39,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.4;
   color: var(--text-color);
   background-color: var(--light-bg);
   overflow: hidden;
@@ -66,7 +66,7 @@ body {
 }
 
 .sidebar-header {
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
   background: white;
   color: var(--dark-color);
@@ -76,7 +76,7 @@ body {
 }
 
 .sidebar-header h1 {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -93,10 +93,10 @@ body {
   background: var(--light-bg);
   border: none;
   color: var(--dark-color);
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.4rem;
+  border-radius: 6px;
   transition: background var(--transition-speed);
 }
 
@@ -107,35 +107,36 @@ body {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
-/* ===== FORMULÁŘ ===== */
+/* ===== FORMULÁŘ - KOMPAKTNÍ ===== */
 .form-group {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.9rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   font-weight: 500;
   color: var(--dark-color);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .form-group label i {
-  margin-right: 0.5rem;
+  margin-right: 0.4rem;
   color: var(--primary-color);
+  font-size: 0.85rem;
 }
 
 .form-group input[type="text"],
 .form-group input[type="time"],
 .form-group input[type="number"] {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.6rem 0.75rem;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
   transition: all var(--transition-speed);
   background: white;
 }
@@ -159,8 +160,8 @@ body {
   background: white;
   border: 1px solid var(--border-color);
   border-top: none;
-  border-radius: 0 0 8px 8px;
-  max-height: 300px;
+  border-radius: 0 0 6px 6px;
+  max-height: 280px;
   overflow-y: auto;
   z-index: 1000;
   display: none;
@@ -172,10 +173,11 @@ body {
 }
 
 .autocomplete-item {
-  padding: 0.75rem;
+  padding: 0.65rem 0.75rem;
   cursor: pointer;
   border-bottom: 1px solid var(--light-bg);
   transition: background var(--transition-speed);
+  font-size: 0.9rem;
 }
 
 .autocomplete-item:last-child {
@@ -189,19 +191,20 @@ body {
 .autocomplete-item i {
   margin-right: 0.5rem;
   color: var(--primary-color);
-  width: 16px;
+  width: 14px;
   text-align: center;
+  font-size: 0.85rem;
 }
 
 .autocomplete-item .item-label {
   color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
 }
 
 .autocomplete-item .item-location {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   margin-left: 0.25rem;
 }
 
@@ -209,16 +212,16 @@ body {
   content: "• ";
 }
 
-/* ===== WAYPOINTS ===== */
+/* ===== WAYPOINTS - KOMPAKTNÍ ===== */
 #waypointsContainer {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .waypoint-group {
-  margin-bottom: 1rem;
-  padding: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 2px solid var(--border-color);
   cursor: move;
   transition: all var(--transition-speed);
@@ -237,7 +240,8 @@ body {
 .drag-handle {
   color: var(--text-muted);
   cursor: grab;
-  margin-right: 0.5rem;
+  margin-right: 0.4rem;
+  font-size: 0.9rem;
 }
 
 .drag-handle:active {
@@ -247,32 +251,33 @@ body {
 .waypoint-header {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
-  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  gap: 0.4rem;
 }
 
 .waypoint-header h3 {
   flex: 1;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--dark-color);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   font-weight: 600;
 }
 
 .waypoint-header h3 i {
   color: var(--primary-color);
+  font-size: 0.9rem;
 }
 
 .remove-waypoint {
   background: white;
   color: var(--danger-color);
   border: 1px solid var(--border-color);
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all var(--transition-speed);
   display: flex;
   align-items: center;
@@ -287,19 +292,19 @@ body {
 
 .waypoint-options {
   display: flex;
-  gap: 1rem;
-  margin-top: 0.75rem;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
 }
 
 .checkbox-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .checkbox-group input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   accent-color: var(--primary-color);
 }
@@ -307,6 +312,7 @@ body {
 .checkbox-group label {
   margin: 0;
   cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .time-group,
@@ -316,7 +322,7 @@ body {
 
 .time-group label,
 .break-group label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   margin-bottom: 0.25rem;
 }
@@ -324,21 +330,27 @@ body {
 .time-group input,
 .break-group input {
   width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
 }
 
-/* ===== TLAČÍTKA ===== */
+/* ===== TLAČÍTKA - KOMPAKTNÍ ===== */
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 1.25rem;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-speed);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   justify-content: center;
+}
+
+.btn i {
+  font-size: 0.9rem;
 }
 
 .btn-primary {
@@ -370,8 +382,8 @@ body {
 
 .form-actions {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 0.6rem;
+  margin-top: 1rem;
 }
 
 .form-actions .btn {
@@ -380,7 +392,7 @@ body {
 
 #addWaypoint {
   width: 100%;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   border: 2px dashed var(--border-color);
   background: white;
 }
@@ -391,16 +403,16 @@ body {
   background: var(--primary-light);
 }
 
-/* ===== VÝSLEDKY ===== */
+/* ===== VÝSLEDKY - KOMPAKTNÍ ===== */
 .results {
-  margin-top: 2rem;
-  padding-top: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
   border-top: 2px solid var(--border-color);
 }
 
 .results h2 {
-  font-size: 1.25rem;
-  margin-bottom: 1rem;
+  font-size: 1.15rem;
+  margin-bottom: 0.9rem;
   color: var(--dark-color);
   font-weight: 600;
 }
@@ -408,39 +420,40 @@ body {
 .summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .summary-item {
-  padding: 1rem;
+  padding: 0.75rem;
   background: var(--primary-light);
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid rgba(0, 170, 0, 0.2);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .summary-item i {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: var(--primary-color);
 }
 
 .summary-item span {
   flex: 1;
+  font-size: 0.9rem;
 }
 
 .summary-item strong {
   color: var(--primary-color);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
-/* ===== TABULKA ===== */
+/* ===== TABULKA - KOMPAKTNÍ ===== */
 .schedule-table {
   overflow-x: auto;
-  margin-bottom: 1rem;
-  border-radius: 12px;
+  margin-bottom: 0.9rem;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -457,15 +470,16 @@ thead {
 }
 
 th {
-  padding: 0.75rem;
+  padding: 0.6rem 0.65rem;
   text-align: left;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 td {
-  padding: 0.75rem;
+  padding: 0.6rem 0.65rem;
   border-bottom: 1px solid var(--light-bg);
+  font-size: 0.9rem;
 }
 
 tbody tr:last-child td {
@@ -512,16 +526,18 @@ tbody tr:hover {
   background: rgba(220, 53, 69, 0.12);
 }
 
-/* ===== EXPORT AKCE ===== */
+/* ===== EXPORT AKCE - KOMPAKTNÍ ===== */
 .export-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 }
 
 .export-actions .btn {
   flex: 1;
-  min-width: 120px;
+  min-width: 110px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
 }
 
 /* ===== MAPA ===== */
@@ -572,23 +588,24 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-width: 400px;
+  max-width: 380px;
 }
 
 .notification {
-  padding: 1rem 1.25rem;
-  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  border-radius: 8px;
   box-shadow: var(--shadow-lg);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   animation: slideIn var(--transition-speed) ease;
   cursor: pointer;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 0.9rem;
 }
 
 .notification i {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
 }
 
 .notification-error {
@@ -647,6 +664,24 @@ tbody tr:hover {
   }
 }
 
+/* ===== SCROLLBAR ===== */
+.sidebar-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: var(--light-bg);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 /* ===== RESPONZIVITA ===== */
 
 /* Tablet (768px - 991px) */
@@ -668,7 +703,7 @@ tbody tr:hover {
     left: 0;
     bottom: 0;
     width: 90%;
-    max-width: 400px;
+    max-width: 380px;
     transform: translateX(-100%);
     box-shadow: var(--shadow-lg);
   }
