@@ -150,7 +150,7 @@ body {
 /* ===== GRID LAYOUT (Z V3) ===== */
 .form-grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 110px 1fr;
   gap: 0.625rem;
   margin-bottom: 0.625rem;
 }
@@ -817,6 +817,10 @@ tbody tr:hover {
   
   .form-grid-2 {
     grid-template-columns: 1fr;
+  }
+  
+  .form-grid-2 .form-group:first-child {
+    display: block;
   }
 }
 

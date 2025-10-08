@@ -1,6 +1,6 @@
 /**
  * Plánovač cest - Mapy.cz
- * Hlavní JavaScript logika
+ * Hlavní JavaScript logika - Hybrid Design
  */
 
 // ===== KONFIGURACE =====
@@ -220,7 +220,7 @@ function addWaypoint() {
   
   waypointDiv.innerHTML = `
     <button type="button" class="waypoint-header" id="waypoint-header-${waypointCounter}">
-      <div class="drag-handle">
+      <div class="drag-handle" id="drag-handle-${waypointCounter}">
         <i class="fas fa-grip-vertical"></i>
       </div>
       <div class="waypoint-title">
@@ -242,14 +242,16 @@ function addWaypoint() {
     
     <div class="waypoint-content" id="waypoint-content-${waypointCounter}">
       <div class="form-group" style="margin-bottom: 0.5rem;">
-        <input 
-          type="text" 
-          id="waypoint-${waypointCounter}" 
-          placeholder="Zadejte adresu zastávky..."
-          autocomplete="off"
-          required
-        >
-        <div class="autocomplete-results" id="waypoint-${waypointCounter}-autocomplete"></div>
+        <div class="autocomplete-wrapper">
+          <input 
+            type="text" 
+            id="waypoint-${waypointCounter}" 
+            placeholder="Zadejte adresu zastávky..."
+            autocomplete="off"
+            required
+          >
+          <div class="autocomplete-results" id="waypoint-${waypointCounter}-autocomplete"></div>
+        </div>
       </div>
       
       <div class="waypoint-inline-controls">
@@ -269,14 +271,16 @@ function addWaypoint() {
   
   container.appendChild(waypointDiv);
   
-  // Setup autocomplete
+  // ===== SETUP AUTOCOMPLETE =====
   setupAutocomplete(`waypoint-${waypointCounter}`, `waypoint-${waypointCounter}-autocomplete`);
   
-  // Accordion toggle functionality
+  // ===== ACCORDION TOGGLE =====
   const header = document.getElementById(`waypoint-header-${waypointCounter}`);
   const content = document.getElementById(`waypoint-content-${waypointCounter}`);
   const toggle = document.getElementById(`waypoint-toggle-${waypointCounter}`);
+  const dragHandle = document.getElementById(`drag-handle-${waypointCounter}`);
   
+  // Zabránit drag když klikáme na header (ale ne na drag handle)
   header.addEventListener('click', (e) => {
     // Pokud klik není na drag handle
     if (!e.target.closest('.drag-handle')) {
@@ -294,32 +298,40 @@ function addWaypoint() {
     }
   });
   
-  // Fixace času
+  // ===== DRAG HANDLE - zabraň propagaci kliknutí =====
+  dragHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+  });
+  
+  dragHandle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  });
+  
+  // ===== FIXACE ČASU =====
   const checkbox = document.getElementById(`waypoint-${waypointCounter}-fixed`);
   const timeInput = document.getElementById(`waypoint-${waypointCounter}-time`);
+  const preview = document.getElementById(`waypoint-preview-${waypointCounter}`);
   
   checkbox.addEventListener('change', (e) => {
     timeInput.disabled = !e.target.checked;
     if (!e.target.checked) {
       timeInput.value = '';
     }
+    updatePreview();
   });
   
-  // Update preview při změně adresy
+  // Update preview při změně času
+  timeInput.addEventListener('input', updatePreview);
+  
+  // ===== UPDATE PREVIEW PŘI ZMĚNĚ ADRESY =====
   const addressInput = document.getElementById(`waypoint-${waypointCounter}`);
-  const preview = document.getElementById(`waypoint-preview-${waypointCounter}`);
   
   addressInput.addEventListener('input', (e) => {
-    const value = e.target.value.trim();
-    if (value) {
-      // Zkrátit dlouhé adresy
-      preview.textContent = value.length > 40 ? value.substring(0, 40) + '...' : value;
-    } else {
-      preview.textContent = 'Klikněte pro zadání adresy';
-    }
+    updatePreview();
   });
   
-  // Update break preview při změně přestávky
+  // ===== UPDATE BREAK PREVIEW PŘI ZMĚNĚ PŘESTÁVKY =====
   const breakInput = document.getElementById(`waypoint-${waypointCounter}-break`);
   const breakPreview = document.getElementById(`waypoint-break-preview-${waypointCounter}`);
   
@@ -328,25 +340,116 @@ function addWaypoint() {
     breakPreview.textContent = `${value} min`;
   });
   
-  // Drag & Drop event listeners
+  // ===== FUNKCE PRO UPDATE PREVIEW =====
+  function updatePreview() {
+    const address = addressInput.value.trim();
+    const isFixed = checkbox.checked;
+    const fixedTime = timeInput.value;
+    
+    if (address) {
+      // Zkrátit dlouhé adresy
+      let previewText = address.length > 35 ? address.substring(0, 35) + '...' : address;
+      
+      // Přidat čas pokud je fixovaný
+      if (isFixed && fixedTime) {
+        previewText += ` • ${fixedTime}`;
+      }
+      
+      preview.textContent = previewText;
+    } else {
+      preview.textContent = 'Klikněte pro zadání adresy';
+    }
+  }
+  
+  // ===== DRAG & DROP =====
   setupDragAndDrop(waypointDiv);
   
-  // Přečíslovat zastávky
+  // ===== PŘEČÍSLOVAT ZASTÁVKY =====
   renumberWaypoints();
   
-  // Otevřít novou zastávku
+  // ===== OTEVŘÍT NOVOU ZASTÁVKU =====
   content.classList.remove('collapsed');
   toggle.textContent = '▼';
   header.classList.add('active');
+}
+
+// ===== DRAG & DROP SETUP =====
+function setupDragAndDrop(element) {
+  element.addEventListener('dragstart', handleDragStart);
+  element.addEventListener('dragend', handleDragEnd);
+  element.addEventListener('dragover', handleDragOver);
+  element.addEventListener('drop', handleDrop);
+  element.addEventListener('dragenter', handleDragEnter);
+  element.addEventListener('dragleave', handleDragLeave);
+}
+
+function handleDragStart(e) {
+  draggedElement = this;
+  this.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragEnd(e) {
+  this.style.opacity = '1';
+  
+  // Odstranit všechny drag-over třídy
+  document.querySelectorAll('.waypoint-group').forEach(item => {
+    item.classList.remove('drag-over');
+  });
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function handleDragEnter(e) {
+  if (this !== draggedElement) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+  
+  if (draggedElement !== this) {
+    const container = document.getElementById('waypointsContainer');
+    const allWaypoints = Array.from(container.children);
+    
+    const draggedIndex = allWaypoints.indexOf(draggedElement);
+    const targetIndex = allWaypoints.indexOf(this);
+    
+    if (draggedIndex < targetIndex) {
+      container.insertBefore(draggedElement, this.nextSibling);
+    } else {
+      container.insertBefore(draggedElement, this);
+    }
+    
+    // Přečíslovat zastávky
+    renumberWaypoints();
+  }
+  
+  return false;
 }
 
 // ===== PŘEČÍSLOVÁNÍ ZASTÁVEK =====
 function renumberWaypoints() {
   const waypoints = document.querySelectorAll('.waypoint-group');
   waypoints.forEach((waypoint, index) => {
-    const header = waypoint.querySelector('h3');
-    const icon = header.querySelector('i');
-    header.innerHTML = `${icon.outerHTML} Zastávka ${index + 1}`;
+    const header = waypoint.querySelector('.waypoint-title-main span');
+    if (header) {
+      header.textContent = `Zastávka ${index + 1}`;
+    }
   });
 }
 
@@ -816,7 +919,7 @@ function displayResults(schedule) {
   document.getElementById('results').style.display = 'block';
 }
 
-// Nová verze displayRouteOnMap s číslovanými markery
+// ===== VYKRESLENÍ TRASY NA MAPĚ - ČÍSLOVANÉ MARKERY =====
 function displayRouteOnMap(routeData, formData) {
   markersLayer.clearLayers();
   routeLayer.clearLayers();
@@ -825,7 +928,7 @@ function displayRouteOnMap(routeData, formData) {
   if (routeData.route && routeData.route.geometry) {
     const coordinates = routeData.route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
     L.polyline(coordinates, {
-      color: '#4A90E2', // Světlejší modrá pro lepší kontrast
+      color: '#4A90E2',
       weight: 5,
       opacity: 0.8
     }).addTo(routeLayer);
@@ -862,24 +965,22 @@ function displayRouteOnMap(routeData, formData) {
   map.fitBounds(bounds, { padding: [50, 50] });
 }
 
-// ===== UPRAVENÉ FUNKCE PRO ČÍSLOVANÉ MARKERY =====
-
-// Nová verze createCustomIcon s podporou čísel a textu
+// ===== VLASTNÍ IKONY PRO MARKERY - ČÍSLOVANÉ =====
 function createCustomIcon(type, content) {
   let backgroundColor, borderColor;
   
   // Určení barvy podle typu
   switch(type) {
     case 'start':
-      backgroundColor = '#00AA00'; // Zelená Mapy.cz
+      backgroundColor = '#00AA00';
       borderColor = '#008800';
       break;
     case 'waypoint':
-      backgroundColor = '#DC3545'; // Červená
+      backgroundColor = '#DC3545';
       borderColor = '#C82333';
       break;
     case 'end':
-      backgroundColor = '#00AA00'; // Zelená Mapy.cz
+      backgroundColor = '#00AA00';
       borderColor = '#008800';
       break;
     default:
@@ -890,13 +991,10 @@ function createCustomIcon(type, content) {
   // HTML pro marker
   let innerContent;
   if (type === 'start') {
-    // Start - ikona vlajky
     innerContent = '<i class="fas fa-flag-checkered" style="font-size: 16px;"></i>';
   } else if (type === 'waypoint') {
-    // Zastávka - číslo
     innerContent = `<span style="font-size: 18px; font-weight: bold;">${content}</span>`;
   } else if (type === 'end') {
-    // Cíl - text "CÍL"
     innerContent = '<span style="font-size: 11px; font-weight: bold;">CÍL</span>';
   }
   
@@ -954,34 +1052,28 @@ async function copyToClipboard() {
 
 // ===== EXPORT - TISK =====
 function printSchedule() {
-  // Najdi původní výsledky
   const results = document.getElementById('results');
   if (!results) return;
   
-  // Vytvoř print kontejner
   const printContainer = document.createElement('div');
   printContainer.className = 'print-container';
   
-  // Přidej hlavičku
   const header = document.createElement('h1');
   header.textContent = 'Plán cesty - Itinerář';
   printContainer.appendChild(header);
   
-  // Naklonuj souhrn (celková vzdálenost a čas)
   const summary = results.querySelector('.summary');
   if (summary) {
     const summaryClone = summary.cloneNode(true);
     printContainer.appendChild(summaryClone);
   }
   
-  // Naklonuj tabulku
   const scheduleTable = results.querySelector('.schedule-table');
   if (scheduleTable) {
     const tableClone = scheduleTable.cloneNode(true);
     printContainer.appendChild(tableClone);
   }
   
-  // Přidej datum tisku
   const now = new Date();
   const dateStr = `Vytištěno: ${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()} v ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
   const printDate = document.createElement('div');
@@ -989,14 +1081,10 @@ function printSchedule() {
   printDate.textContent = dateStr;
   printContainer.appendChild(printDate);
   
-  // Přidej do body
   document.body.appendChild(printContainer);
   
-  // Počkej na vykreslení a tiskni
   setTimeout(() => {
     window.print();
-    
-    // Po tisku (nebo zavření dialogu) ukliď
     setTimeout(() => {
       document.body.removeChild(printContainer);
     }, 100);
