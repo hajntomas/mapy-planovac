@@ -208,7 +208,7 @@ function getIconForType(type) {
   return 'fa-map-marker-alt';
 }
 
-// ===== PŘIDÁNÍ ZASTÁVKY =====
+// ===== PŘIDÁNÍ ZASTÁVKY - HYBRID ACCORDION STYLE =====
 function addWaypoint() {
   waypointCounter++;
   const container = document.getElementById('waypointsContainer');
@@ -219,19 +219,29 @@ function addWaypoint() {
   waypointDiv.draggable = true;
   
   waypointDiv.innerHTML = `
-    <div class="waypoint-header">
+    <button type="button" class="waypoint-header" id="waypoint-header-${waypointCounter}">
       <div class="drag-handle">
         <i class="fas fa-grip-vertical"></i>
       </div>
-      <h3><i class="fas fa-map-pin"></i> Zastávka ${waypointCounter}</h3>
-      <button type="button" class="remove-waypoint" onclick="removeWaypoint(${waypointCounter})">
-        <i class="fas fa-trash"></i> Odebrat
-      </button>
-    </div>
+      <div class="waypoint-title">
+        <div class="waypoint-title-main">
+          <i class="fas fa-map-pin"></i>
+          <span>Zastávka ${waypointCounter}</span>
+        </div>
+        <div class="waypoint-preview" id="waypoint-preview-${waypointCounter}">
+          Klikněte pro zadání adresy
+        </div>
+      </div>
+      <div class="waypoint-break-preview" id="waypoint-break-preview-${waypointCounter}">
+        30 min
+      </div>
+      <div class="waypoint-toggle" id="waypoint-toggle-${waypointCounter}">
+        ▼
+      </div>
+    </button>
     
-    <div class="form-group">
-      <label>Adresa</label>
-      <div class="autocomplete-wrapper">
+    <div class="waypoint-content" id="waypoint-content-${waypointCounter}">
+      <div class="form-group" style="margin-bottom: 0.5rem;">
         <input 
           type="text" 
           id="waypoint-${waypointCounter}" 
@@ -241,31 +251,50 @@ function addWaypoint() {
         >
         <div class="autocomplete-results" id="waypoint-${waypointCounter}-autocomplete"></div>
       </div>
-    </div>
-    
-    <div class="waypoint-options">
-      <div class="checkbox-group">
+      
+      <div class="waypoint-inline-controls">
         <input type="checkbox" id="waypoint-${waypointCounter}-fixed">
-        <label for="waypoint-${waypointCounter}-fixed">Fixovat čas příjezdu</label>
+        <label for="waypoint-${waypointCounter}-fixed">Fixovat</label>
+        <input type="time" id="waypoint-${waypointCounter}-time" disabled autocomplete="off">
+        <span class="separator">•</span>
+        <input type="number" id="waypoint-${waypointCounter}-break" value="30" min="0" autocomplete="off">
+        <span>min</span>
       </div>
-    </div>
-    
-    <div class="waypoint-options">
-      <div class="time-group">
-        <label>Čas příjezdu (pokud fixován)</label>
-        <input type="time" id="waypoint-${waypointCounter}-time" disabled>
-      </div>
-      <div class="break-group">
-        <label>Přestávka (minuty)</label>
-        <input type="number" id="waypoint-${waypointCounter}-break" value="30" min="0">
-      </div>
+      
+      <button type="button" class="remove-waypoint" onclick="removeWaypoint(${waypointCounter})">
+        <i class="fas fa-trash"></i> Odebrat zastávku
+      </button>
     </div>
   `;
   
   container.appendChild(waypointDiv);
   
+  // Setup autocomplete
   setupAutocomplete(`waypoint-${waypointCounter}`, `waypoint-${waypointCounter}-autocomplete`);
   
+  // Accordion toggle functionality
+  const header = document.getElementById(`waypoint-header-${waypointCounter}`);
+  const content = document.getElementById(`waypoint-content-${waypointCounter}`);
+  const toggle = document.getElementById(`waypoint-toggle-${waypointCounter}`);
+  
+  header.addEventListener('click', (e) => {
+    // Pokud klik není na drag handle
+    if (!e.target.closest('.drag-handle')) {
+      const isCollapsed = content.classList.contains('collapsed');
+      
+      if (isCollapsed) {
+        content.classList.remove('collapsed');
+        toggle.textContent = '▼';
+        header.classList.add('active');
+      } else {
+        content.classList.add('collapsed');
+        toggle.textContent = '▶';
+        header.classList.remove('active');
+      }
+    }
+  });
+  
+  // Fixace času
   const checkbox = document.getElementById(`waypoint-${waypointCounter}-fixed`);
   const timeInput = document.getElementById(`waypoint-${waypointCounter}-time`);
   
@@ -276,80 +305,39 @@ function addWaypoint() {
     }
   });
   
+  // Update preview při změně adresy
+  const addressInput = document.getElementById(`waypoint-${waypointCounter}`);
+  const preview = document.getElementById(`waypoint-preview-${waypointCounter}`);
+  
+  addressInput.addEventListener('input', (e) => {
+    const value = e.target.value.trim();
+    if (value) {
+      // Zkrátit dlouhé adresy
+      preview.textContent = value.length > 40 ? value.substring(0, 40) + '...' : value;
+    } else {
+      preview.textContent = 'Klikněte pro zadání adresy';
+    }
+  });
+  
+  // Update break preview při změně přestávky
+  const breakInput = document.getElementById(`waypoint-${waypointCounter}-break`);
+  const breakPreview = document.getElementById(`waypoint-break-preview-${waypointCounter}`);
+  
+  breakInput.addEventListener('input', (e) => {
+    const value = e.target.value || '30';
+    breakPreview.textContent = `${value} min`;
+  });
+  
   // Drag & Drop event listeners
   setupDragAndDrop(waypointDiv);
   
   // Přečíslovat zastávky
   renumberWaypoints();
-}
-
-// ===== DRAG & DROP SETUP =====
-function setupDragAndDrop(element) {
-  element.addEventListener('dragstart', handleDragStart);
-  element.addEventListener('dragend', handleDragEnd);
-  element.addEventListener('dragover', handleDragOver);
-  element.addEventListener('drop', handleDrop);
-  element.addEventListener('dragenter', handleDragEnter);
-  element.addEventListener('dragleave', handleDragLeave);
-}
-
-function handleDragStart(e) {
-  draggedElement = this;
-  this.style.opacity = '0.4';
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', this.innerHTML);
-}
-
-function handleDragEnd(e) {
-  this.style.opacity = '1';
   
-  // Odstranit všechny drag-over třídy
-  document.querySelectorAll('.waypoint-group').forEach(item => {
-    item.classList.remove('drag-over');
-  });
-}
-
-function handleDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
-  e.dataTransfer.dropEffect = 'move';
-  return false;
-}
-
-function handleDragEnter(e) {
-  if (this !== draggedElement) {
-    this.classList.add('drag-over');
-  }
-}
-
-function handleDragLeave(e) {
-  this.classList.remove('drag-over');
-}
-
-function handleDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation();
-  }
-  
-  if (draggedElement !== this) {
-    const container = document.getElementById('waypointsContainer');
-    const allWaypoints = Array.from(container.children);
-    
-    const draggedIndex = allWaypoints.indexOf(draggedElement);
-    const targetIndex = allWaypoints.indexOf(this);
-    
-    if (draggedIndex < targetIndex) {
-      container.insertBefore(draggedElement, this.nextSibling);
-    } else {
-      container.insertBefore(draggedElement, this);
-    }
-    
-    // Přečíslovat zastávky
-    renumberWaypoints();
-  }
-  
-  return false;
+  // Otevřít novou zastávku
+  content.classList.remove('collapsed');
+  toggle.textContent = '▼';
+  header.classList.add('active');
 }
 
 // ===== PŘEČÍSLOVÁNÍ ZASTÁVEK =====
