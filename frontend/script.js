@@ -179,9 +179,9 @@ function displaySuggestions(items, resultsElement, inputElement) {
       resultsElement.classList.remove('active');
       resultsElement.innerHTML = '';
       
-      // ✅ OPRAVA: Vyvolat input event aby se aktualizoval preview
-      const inputEvent = new Event('input', { bubbles: true });
-      inputElement.dispatchEvent(inputEvent);
+      // ✅ OPRAVA: Vyvolat custom event místo 'input' aby se neotevřel suggest
+      const updateEvent = new CustomEvent('addressSelected', { bubbles: true });
+      inputElement.dispatchEvent(updateEvent);
     });
     
     resultsElement.appendChild(div);
@@ -335,6 +335,11 @@ function addWaypoint() {
     updatePreview();
   });
   
+  // ✅ PŘIDEJ: Poslouchat i custom event z našeptávače
+  addressInput.addEventListener('addressSelected', (e) => {
+    updatePreview();
+  });
+  
   // ===== UPDATE BREAK PREVIEW PŘI ZMĚNĚ PŘESTÁVKY =====
   const breakInput = document.getElementById(`waypoint-${waypointCounter}-break`);
   const breakPreview = document.getElementById(`waypoint-break-preview-${waypointCounter}`);
@@ -367,6 +372,23 @@ function addWaypoint() {
   
   // ===== DRAG & DROP =====
   setupDragAndDrop(waypointDiv);
+  
+  // ✅ NOVÉ: Sbalit všechny ostatní zastávky
+  const allWaypoints = document.querySelectorAll('.waypoint-group');
+  allWaypoints.forEach(waypoint => {
+    if (waypoint !== waypointDiv) {
+      const otherId = waypoint.dataset.waypointId;
+      const otherContent = document.getElementById(`waypoint-content-${otherId}`);
+      const otherToggle = document.getElementById(`waypoint-toggle-${otherId}`);
+      const otherHeader = document.getElementById(`waypoint-header-${otherId}`);
+      
+      if (otherContent && !otherContent.classList.contains('collapsed')) {
+        otherContent.classList.add('collapsed');
+        otherToggle.textContent = '▶';
+        otherHeader.classList.remove('active');
+      }
+    }
+  });
   
   // ===== PŘEČÍSLOVAT ZASTÁVKY =====
   renumberWaypoints();
