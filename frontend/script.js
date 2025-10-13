@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initMap() {
   map = L.map('map').setView([49.8175, 15.4730], 7);
   
-  L.tileLayer('https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=Y1lHxkYBW0MfbJZnDFUR3rOrDePUgIcpnDUktxngjA4', {
+  L.tileLayer(`${WORKER_URL}/tiles/{z}/{x}/{y}`, {
     attribution: '&copy; <a href="https://mapy.com">Mapy.com</a>',
     maxZoom: 19
   }).addTo(map);
