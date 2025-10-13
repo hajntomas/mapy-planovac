@@ -39,6 +39,11 @@ export default {
         return handleRoute(request, env.MAPY_API_KEY);
       }
 
+      // NOVÝ endpoint pro tiles
+      if (path.startsWith('/tiles/') && request.method === 'GET') {
+        return handleTiles(url, env.MAPY_API_KEY);
+      }
+
       return jsonResponse({ error: 'Endpoint nenalezen' }, 404);
 
     } catch (error) {
@@ -198,6 +203,50 @@ async function handleRoute(request, apiKey) {
       message: error.message,
       stack: error.stack
     }, 500);
+  }
+}
+
+// NOVÁ funkce pro tiles
+async function handleTiles(url, apiKey) {
+  try {
+    // Očekáváme URL ve formátu: /tiles/z/x/y
+    const pathParts = url.pathname.split('/').filter(p => p);
+    
+    if (pathParts.length !== 4 || pathParts[0] !== 'tiles') {
+      return new Response('Invalid tiles path', { status: 400 });
+    }
+
+    const [, z, x, y] = pathParts;
+
+    // Sestavit URL pro Mapy.cz
+    const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}?apikey=${apiKey}`;
+
+    // Stáhnout tile z Mapy.cz
+    const response = await fetch(mapyTileUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'image/png',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Tiles error:', response.status);
+      return new Response('Tile not found', { status: response.status });
+    }
+
+    // Vrátit obrázek s CORS hlavičkami
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=86400', // Cache na 24 hodin
+      },
+    });
+
+  } catch (error) {
+    console.error('Tiles error:', error);
+    return new Response('Tile error', { status: 500 });
   }
 }
 
