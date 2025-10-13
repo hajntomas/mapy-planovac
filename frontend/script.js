@@ -178,6 +178,10 @@ function displaySuggestions(items, resultsElement, inputElement) {
       inputElement.dataset.coords = `${item.position.lat},${item.position.lon}`;
       resultsElement.classList.remove('active');
       resultsElement.innerHTML = '';
+      
+      // ✅ OPRAVA: Vyvolat input event aby se aktualizoval preview
+      const inputEvent = new Event('input', { bubbles: true });
+      inputElement.dispatchEvent(inputEvent);
     });
     
     resultsElement.appendChild(div);
