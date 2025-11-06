@@ -47,6 +47,7 @@ function initEventListeners() {
   document.getElementById('routeForm').addEventListener('submit', handleFormSubmit);
   document.getElementById('resetForm').addEventListener('click', handleReset);
   document.getElementById('addWaypoint').addEventListener('click', addWaypoint);
+  document.getElementById('planWithReserve').addEventListener('click', handlePlanWithReserve);
   
   setupAutocomplete('start', 'startAutocomplete');
   setupAutocomplete('end', 'endAutocomplete');
@@ -544,6 +545,118 @@ async function handleFormSubmit(e) {
   } finally {
     showLoader(false);
   }
+}
+
+// ===== PLÁNOVÁNÍ S AUTOMATICKOU REZERVOU =====
+async function handlePlanWithReserve(e) {
+  e.preventDefault();
+  
+  if (!isOnline) {
+    showNotification('Jste offline. Připojte se k internetu.', 'warning');
+    return;
+  }
+  
+  const validation = validateForm();
+  if (!validation.valid) {
+    showNotification(validation.message, 'error');
+    return;
+  }
+  
+  showLoader(true);
+  
+  try {
+    showNotification('Počítám trasu s automatickou rezervou...', 'success');
+    
+    // 1. Získat data z formuláře
+    const formData = getFormData();
+    
+    // 2. Geokódovat adresy
+    await geocodeAddresses(formData);
+    
+    // 3. Spočítat trasu BEZ fixací (jen pro získání časů)
+    const tempRoute = await calculateRoute(formData);
+    
+    // 4. Vypočítat předběžné časy příjezdů
+    const preliminarySchedule = calculateSchedule(formData, tempRoute);
+    
+    // 5. Automaticky nastavit fixované časy s rezervou 15-30 min
+    autoFixWaypointTimes(formData, preliminarySchedule);
+    
+    // 6. Spočítat trasu ZNOVU s fixovanými časy
+    const finalRoute = await calculateRoute(formData);
+    
+    // 7. Vypočítat finální harmonogram
+    const finalSchedule = calculateSchedule(formData, finalRoute);
+    
+    // 8. Uložit data
+    routeData = finalRoute;
+    scheduleData = finalSchedule;
+    
+    // 9. Zobrazit výsledky
+    displayResults(finalSchedule);
+    displayRouteOnMap(finalRoute, formData);
+    
+    showNotification('Trasa s fixovanými časy úspěšně naplánována!', 'success');
+    
+  } catch (error) {
+    console.error('Plan with reserve error:', error);
+    showNotification(error.message || 'Chyba při plánování trasy.', 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+// ===== AUTOMATICKÁ FIXACE ČASŮ S REZERVOU =====
+function autoFixWaypointTimes(formData, preliminarySchedule) {
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  
+  // Projít všechny zastávky v harmonogramu (vynechat start a cíl)
+  for (let i = 1; i < preliminarySchedule.items.length - 1; i++) {
+    const scheduleItem = preliminarySchedule.items[i];
+    
+    // Najít odpovídající waypoint element
+    const waypointIndex = i - 1;
+    if (waypointIndex < waypoints.length) {
+      const waypointId = waypoints[waypointIndex].dataset.waypointId;
+      
+      // Získat předběžný čas příjezdu
+      const arrivalMinutes = timeToMinutes(scheduleItem.arrival);
+      
+      // Přidat náhodnou rezervu 15-30 minut
+      const reserve = Math.floor(Math.random() * 16) + 15; // 15-30 minut
+      const fixedMinutes = arrivalMinutes + reserve;
+      const fixedTime = minutesToTime(fixedMinutes);
+      
+      // Nastavit fixaci v UI
+      const checkbox = document.getElementById(`waypoint-${waypointId}-fixed`);
+      const timeInput = document.getElementById(`waypoint-${waypointId}-time`);
+      
+      checkbox.checked = true;
+      timeInput.disabled = false;
+      timeInput.value = fixedTime;
+      
+      // Aktualizovat i v formData
+      formData.waypoints[waypointIndex].isFixed = true;
+      formData.waypoints[waypointIndex].fixedTime = fixedTime;
+      
+      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${reserve} min)`);
+    }
+  }
+  
+  // Aktualizovat preview všech zastávek
+  waypoints.forEach(waypoint => {
+    const id = waypoint.dataset.waypointId;
+    const preview = document.getElementById(`waypoint-preview-${id}`);
+    const addressInput = document.getElementById(`waypoint-${id}`);
+    const timeInput = document.getElementById(`waypoint-${id}-time`);
+    
+    if (preview && addressInput && timeInput.value) {
+      const address = addressInput.value.trim();
+      let previewText = address.length > 35 ? address.substring(0, 35) + '...' : address;
+      previewText += ` • ${timeInput.value}`;
+      preview.textContent = previewText;
+    }
+  });
 }
 
 // ===== KONTROLA POŘADÍ FIXOVANÝCH ČASŮ =====
