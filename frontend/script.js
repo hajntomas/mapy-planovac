@@ -606,6 +606,83 @@ async function handlePlanWithReserve(e) {
   }
 }
 
+// ===== KONTROLA POŘADÍ FIXOVANÝCH ČASŮ =====
+function checkFixedTimesOrder() {
+  const departureTime = document.getElementById('departureTime').value;
+  let previousTime = timeToMinutes(departureTime);
+  let previousLabel = 'odjezd';
+  
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  const issues = [];
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const id = waypoints[i].dataset.waypointId;
+    const address = document.getElementById(`waypoint-${id}`).value.trim();
+    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
+    const fixedTime = document.getElementById(`waypoint-${id}-time`).value;
+    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
+    
+    if (isFixed && fixedTime) {
+      const fixedMinutes = timeToMinutes(fixedTime);
+      
+      if (fixedMinutes <= previousTime) {
+        issues.push({
+          waypointNumber: i + 1,
+          address: address,
+          currentTime: fixedTime,
+          previousTime: minutesToTime(previousTime),
+          previousLabel: previousLabel,
+          minimalTime: minutesToTime(previousTime + 1)
+        });
+      }
+      
+      previousTime = fixedMinutes + breakMinutes;
+      previousLabel = `zastávka ${i + 1}`;
+    }
+  }
+  
+  if (issues.length > 0) {
+    let message = 'Fixované časy nejsou v správném pořadí po přesunutí zastávek:\n\n';
+    issues.forEach(issue => {
+      message += `• Zastávka ${issue.waypointNumber} (${issue.address}): \n`;
+      message += `  Fixovaný čas ${issue.currentTime} je dřív nebo roven času ${issue.previousTime} na ${issue.previousLabel}\n`;
+      message += `  Doporučený minimální čas: ${issue.minimalTime}\n\n`;
+    });
+    
+    return { valid: false, message: message.trim(), issues: issues };
+  }
+  
+  return { valid: true };
+}
+
+// ===== AUTOMATICKÁ ÚPRAVA FIXOVANÝCH ČASŮ =====
+function adjustFixedTimes() {
+  const departureTime = document.getElementById('departureTime').value;
+  let previousTime = timeToMinutes(departureTime);
+  
+  const waypoints = document.querySelectorAll('.waypoint-group');
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const id = waypoints[i].dataset.waypointId;
+    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
+    const timeInput = document.getElementById(`waypoint-${id}-time`);
+    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
+    
+    if (isFixed && timeInput.value) {
+      const fixedMinutes = timeToMinutes(timeInput.value);
+      
+      // Pokud je čas dřív než předchozí, nastavit na předchozí + 30 minut
+      if (fixedMinutes <= previousTime) {
+        const newTime = previousTime + 30;
+        timeInput.value = minutesToTime(newTime);
+        previousTime = newTime + breakMinutes;
+      } else {
+        previousTime = fixedMinutes + breakMinutes;
+      }
+    }
+  }
+}
+
 // ===== AUTOMATICKÁ FIXACE ČASŮ S REZERVOU =====
 function autoFixWaypointTimes(formData, preliminarySchedule) {
   const waypoints = document.querySelectorAll('.waypoint-group');
