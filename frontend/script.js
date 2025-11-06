@@ -622,13 +622,12 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
       // Získat předběžný čas příjezdu
       const arrivalMinutes = timeToMinutes(scheduleItem.arrival);
       
-      // Přidat náhodnou rezervu 15-30 minut
-      const reserve = Math.floor(Math.random() * 16) + 15; // 15-30 minut
-      const preliminaryTime = arrivalMinutes + reserve;
-      
-      // ✅ NOVÉ: Zaokrouhlit na celou nebo půl hodinu
-      const fixedMinutes = roundToHalfHour(preliminaryTime);
+      // ✅ NOVÝ ALGORITMUS: Zaokrouhlit s omezením max 30 min čekání
+      const fixedMinutes = roundToHalfHourWithLimit(arrivalMinutes, 15, 30);
       const fixedTime = minutesToTime(fixedMinutes);
+      
+      // Spočítat skutečnou rezervu
+      const actualReserve = fixedMinutes - arrivalMinutes;
       
       // Nastavit fixaci v UI
       const checkbox = document.getElementById(`waypoint-${waypointId}-fixed`);
@@ -642,7 +641,7 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
       formData.waypoints[waypointIndex].isFixed = true;
       formData.waypoints[waypointIndex].fixedTime = fixedTime;
       
-      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${reserve} min, zaokrouhleno)`);
+      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${actualReserve} min)`);
     }
   }
   
@@ -662,90 +661,39 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
   });
 }
 
-// ===== ZAOKROUHLENÍ NA CELOU NEBO PŮL HODINU =====
-function roundToHalfHour(minutes) {
-  const remainder = minutes % 30;
-  if (remainder === 0) {
-    return minutes; // už je na půl hodině nebo celé hodině
+// ===== ZAOKROUHLENÍ NA CELOU/PŮL HODINU S LIMITEM ČEKÁNÍ =====
+function roundToHalfHourWithLimit(minutes, minReserve, maxReserve) {
+  // Najít nejbližší půlhodiny (dolů a nahoru)
+  const roundedDown = Math.floor(minutes / 30) * 30;
+  const roundedUp = Math.ceil(minutes / 30) * 30;
+  
+  // Spočítat rezervy pro oba případy
+  const reserveDown = roundedDown - minutes;
+  const reserveUp = roundedUp - minutes;
+  
+  // Pokud zaokrouhlení dolů dává zápornou rezervu, musíme nahoru
+  if (reserveDown < 0) {
+    return roundedUp;
+  }
+  
+  // Pokud zaokrouhlení nahoru je v limitu (max 30 min), použít ho
+  if (reserveUp <= maxReserve && reserveUp >= minReserve) {
+    return roundedUp;
+  }
+  
+  // Pokud zaokrouhlení dolů je v limitu, použít ho
+  if (reserveDown <= maxReserve && reserveDown >= minReserve) {
+    return roundedDown;
+  }
+  
+  // Pokud ani jedno není v limitu, vzít to, co je blíž k ideálnímu rozmezí
+  // Ideál je průměr mezi min a max (15-30 → ideál 22.5 min)
+  const idealReserve = (minReserve + maxReserve) / 2;
+  
+  if (Math.abs(reserveUp - idealReserve) < Math.abs(reserveDown - idealReserve)) {
+    return roundedUp;
   } else {
-    return minutes + (30 - remainder); // zaokrouhlit nahoru na nejbližší :00 nebo :30
-  }
-}
-
-// ===== KONTROLA POŘADÍ FIXOVANÝCH ČASŮ =====
-function checkFixedTimesOrder() {
-  const departureTime = document.getElementById('departureTime').value;
-  let previousTime = timeToMinutes(departureTime);
-  let previousLabel = 'odjezd';
-  
-  const waypoints = document.querySelectorAll('.waypoint-group');
-  const issues = [];
-  
-  for (let i = 0; i < waypoints.length; i++) {
-    const id = waypoints[i].dataset.waypointId;
-    const address = document.getElementById(`waypoint-${id}`).value.trim();
-    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
-    const fixedTime = document.getElementById(`waypoint-${id}-time`).value;
-    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
-    
-    if (isFixed && fixedTime) {
-      const fixedMinutes = timeToMinutes(fixedTime);
-      
-      if (fixedMinutes <= previousTime) {
-        issues.push({
-          waypointNumber: i + 1,
-          address: address,
-          currentTime: fixedTime,
-          previousTime: minutesToTime(previousTime),
-          previousLabel: previousLabel,
-          minimalTime: minutesToTime(previousTime + 1)
-        });
-      }
-      
-      previousTime = fixedMinutes + breakMinutes;
-      previousLabel = `zastávka ${i + 1}`;
-    }
-  }
-  
-  if (issues.length > 0) {
-    let message = 'Fixované časy nejsou v správném pořadí po přesunutí zastávek:\n\n';
-    issues.forEach(issue => {
-      message += `• Zastávka ${issue.waypointNumber} (${issue.address}): \n`;
-      message += `  Fixovaný čas ${issue.currentTime} je dřív nebo roven času ${issue.previousTime} na ${issue.previousLabel}\n`;
-      message += `  Doporučený minimální čas: ${issue.minimalTime}\n\n`;
-    });
-    
-    return { valid: false, message: message.trim(), issues: issues };
-  }
-  
-  return { valid: true };
-}
-
-// ===== AUTOMATICKÁ ÚPRAVA FIXOVANÝCH ČASŮ =====
-function adjustFixedTimes() {
-  const departureTime = document.getElementById('departureTime').value;
-  let previousTime = timeToMinutes(departureTime);
-  
-  const waypoints = document.querySelectorAll('.waypoint-group');
-  
-  for (let i = 0; i < waypoints.length; i++) {
-    const id = waypoints[i].dataset.waypointId;
-    const isFixed = document.getElementById(`waypoint-${id}-fixed`).checked;
-    const timeInput = document.getElementById(`waypoint-${id}-time`);
-    const breakMinutes = parseInt(document.getElementById(`waypoint-${id}-break`).value);
-    
-    if (isFixed && timeInput.value) {
-      const fixedMinutes = timeToMinutes(timeInput.value);
-      
-      // Pokud je čas dřív než předchozí, nastavit na předchozí + 30 minut
-      if (fixedMinutes <= previousTime) {
-        const newTime = previousTime + 30;
-        timeInput.value = minutesToTime(newTime);
-        previousTime = newTime + breakMinutes;
-      } else {
-        previousTime = fixedMinutes + breakMinutes;
-      }
-    }
+    return roundedDown;
   }
 }
 
