@@ -624,7 +624,10 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
       
       // Přidat náhodnou rezervu 15-30 minut
       const reserve = Math.floor(Math.random() * 16) + 15; // 15-30 minut
-      const fixedMinutes = arrivalMinutes + reserve;
+      const preliminaryTime = arrivalMinutes + reserve;
+      
+      // ✅ NOVÉ: Zaokrouhlit na celou nebo půl hodinu
+      const fixedMinutes = roundToHalfHour(preliminaryTime);
       const fixedTime = minutesToTime(fixedMinutes);
       
       // Nastavit fixaci v UI
@@ -639,7 +642,7 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
       formData.waypoints[waypointIndex].isFixed = true;
       formData.waypoints[waypointIndex].fixedTime = fixedTime;
       
-      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${reserve} min)`);
+      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${reserve} min, zaokrouhleno)`);
     }
   }
   
@@ -657,6 +660,16 @@ function autoFixWaypointTimes(formData, preliminarySchedule) {
       preview.textContent = previewText;
     }
   });
+}
+
+// ===== ZAOKROUHLENÍ NA CELOU NEBO PŮL HODINU =====
+function roundToHalfHour(minutes) {
+  const remainder = minutes % 30;
+  if (remainder === 0) {
+    return minutes; // už je na půl hodině nebo celé hodině
+  } else {
+    return minutes + (30 - remainder); // zaokrouhlit nahoru na nejbližší :00 nebo :30
+  }
 }
 
 // ===== KONTROLA POŘADÍ FIXOVANÝCH ČASŮ =====
