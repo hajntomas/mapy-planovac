@@ -547,7 +547,7 @@ async function handleFormSubmit(e) {
   }
 }
 
-// ===== PLÁNOVÁNÍ S AUTOMATICKOU REZERVOU =====
+// ===== PLÁNOVÁNÍ S AUTOMATICKOU REZERVOU - ITERATIVNÍ =====
 async function handlePlanWithReserve(e) {
   e.preventDefault();
   
@@ -573,26 +573,70 @@ async function handlePlanWithReserve(e) {
     // 2. Geokódovat adresy
     await geocodeAddresses(formData);
     
-    // 3. Spočítat trasu BEZ fixací (jen pro získání časů)
-    const tempRoute = await calculateRoute(formData);
+    // 3. ITERATIVNÍ FIXACE - fixovat zastávky postupně
+    const waypointElements = document.querySelectorAll('.waypoint-group');
     
-    // 4. Vypočítat předběžné časy příjezdů
-    const preliminarySchedule = calculateSchedule(formData, tempRoute);
+    for (let i = 0; i < formData.waypoints.length; i++) {
+      console.log(`\n🔧 Fixuji zastávku ${i + 1}/${formData.waypoints.length}`);
+      
+      // Spočítat aktuální trasu (s již fixovanými předchozími zastávkami)
+      const currentRoute = await calculateRoute(formData);
+      const currentSchedule = calculateSchedule(formData, currentRoute);
+      
+      // Najít příjezd na tuto zastávku v aktuálním harmonogramu
+      // items[0] = start, items[1] = první zastávka, items[2] = druhá zastávka, ...
+      const scheduleIndex = i + 1;
+      const scheduleItem = currentSchedule.items[scheduleIndex];
+      
+      if (!scheduleItem) {
+        console.error(`⚠️ Zastávka ${i + 1} nenalezena v harmonogramu`);
+        continue;
+      }
+      
+      // Získat čas příjezdu
+      const arrivalMinutes = timeToMinutes(scheduleItem.arrival);
+      
+      // Zaokrouhlit s rezervou 15-30 minut
+      const fixedMinutes = roundToHalfHourWithLimit(arrivalMinutes, 15, 30);
+      const fixedTime = minutesToTime(fixedMinutes);
+      const actualReserve = fixedMinutes - arrivalMinutes;
+      
+      // Nastavit fixaci v UI
+      const waypointId = waypointElements[i].dataset.waypointId;
+      const checkbox = document.getElementById(`waypoint-${waypointId}-fixed`);
+      const timeInput = document.getElementById(`waypoint-${waypointId}-time`);
+      
+      checkbox.checked = true;
+      timeInput.disabled = false;
+      timeInput.value = fixedTime;
+      
+      // ✅ KRITICKÉ: Aktualizovat formData OKAMŽITĚ pro další iteraci
+      formData.waypoints[i].isFixed = true;
+      formData.waypoints[i].fixedTime = fixedTime;
+      
+      console.log(`✅ Zastávka ${i + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${actualReserve} min)`);
+      
+      // Aktualizovat preview
+      const preview = document.getElementById(`waypoint-preview-${waypointId}`);
+      const addressInput = document.getElementById(`waypoint-${waypointId}`);
+      if (preview && addressInput) {
+        const address = addressInput.value.trim();
+        let previewText = address.length > 35 ? address.substring(0, 35) + '...' : address;
+        previewText += ` • ${fixedTime}`;
+        preview.textContent = previewText;
+      }
+    }
     
-    // 5. Automaticky nastavit fixované časy s rezervou 15-30 min
-    autoFixWaypointTimes(formData, preliminarySchedule);
-    
-    // 6. Spočítat trasu ZNOVU s fixovanými časy
+    // 4. Finální výpočet s VŠEMI fixacemi
+    console.log('\n🏁 Finální výpočet s všemi fixacemi...');
     const finalRoute = await calculateRoute(formData);
-    
-    // 7. Vypočítat finální harmonogram
     const finalSchedule = calculateSchedule(formData, finalRoute);
     
-    // 8. Uložit data
+    // 5. Uložit data
     routeData = finalRoute;
     scheduleData = finalSchedule;
     
-    // 9. Zobrazit výsledky
+    // 6. Zobrazit výsledky
     displayResults(finalSchedule);
     displayRouteOnMap(finalRoute, formData);
     
@@ -681,61 +725,6 @@ function adjustFixedTimes() {
       }
     }
   }
-}
-
-// ===== AUTOMATICKÁ FIXACE ČASŮ S REZERVOU =====
-function autoFixWaypointTimes(formData, preliminarySchedule) {
-  const waypoints = document.querySelectorAll('.waypoint-group');
-  
-  // Projít všechny zastávky v harmonogramu (vynechat start a cíl)
-  for (let i = 1; i < preliminarySchedule.items.length - 1; i++) {
-    const scheduleItem = preliminarySchedule.items[i];
-    
-    // Najít odpovídající waypoint element
-    const waypointIndex = i - 1;
-    if (waypointIndex < waypoints.length) {
-      const waypointId = waypoints[waypointIndex].dataset.waypointId;
-      
-      // Získat předběžný čas příjezdu
-      const arrivalMinutes = timeToMinutes(scheduleItem.arrival);
-      
-      // ✅ NOVÝ ALGORITMUS: Zaokrouhlit s omezením max 30 min čekání
-      const fixedMinutes = roundToHalfHourWithLimit(arrivalMinutes, 15, 30);
-      const fixedTime = minutesToTime(fixedMinutes);
-      
-      // Spočítat skutečnou rezervu
-      const actualReserve = fixedMinutes - arrivalMinutes;
-      
-      // Nastavit fixaci v UI
-      const checkbox = document.getElementById(`waypoint-${waypointId}-fixed`);
-      const timeInput = document.getElementById(`waypoint-${waypointId}-time`);
-      
-      checkbox.checked = true;
-      timeInput.disabled = false;
-      timeInput.value = fixedTime;
-      
-      // Aktualizovat i v formData
-      formData.waypoints[waypointIndex].isFixed = true;
-      formData.waypoints[waypointIndex].fixedTime = fixedTime;
-      
-      console.log(`✅ Zastávka ${waypointIndex + 1}: Příjezd ${scheduleItem.arrival} → Fixován na ${fixedTime} (rezerva +${actualReserve} min)`);
-    }
-  }
-  
-  // Aktualizovat preview všech zastávek
-  waypoints.forEach(waypoint => {
-    const id = waypoint.dataset.waypointId;
-    const preview = document.getElementById(`waypoint-preview-${id}`);
-    const addressInput = document.getElementById(`waypoint-${id}`);
-    const timeInput = document.getElementById(`waypoint-${id}-time`);
-    
-    if (preview && addressInput && timeInput.value) {
-      const address = addressInput.value.trim();
-      let previewText = address.length > 35 ? address.substring(0, 35) + '...' : address;
-      previewText += ` • ${timeInput.value}`;
-      preview.textContent = previewText;
-    }
-  });
 }
 
 // ===== ZAOKROUHLENÍ NA CELOU/PŮL HODINU S LIMITEM ČEKÁNÍ =====
@@ -1357,7 +1346,7 @@ function showLoader(show) {
   document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
 }
 
-// ===== POMOCNÉ FUNKCE =====
+// ===== POMOCNÉ   FUNKCE =====
 
 function timeToMinutes(time) {
   const [hours, minutes] = time.split(':').map(Number);
