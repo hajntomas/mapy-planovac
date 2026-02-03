@@ -35,6 +35,11 @@ export default {
         return jsonResponse({ error: 'API klíč není nakonfigurován' }, 500);
       }
 
+      // Diagnostický endpoint - otevřete v prohlížeči pro zjištění problémů
+      if (path === '/api/debug' && request.method === 'GET') {
+        return handleDebug(env.MAPY_API_KEY);
+      }
+
       if (path === '/api/suggest' && request.method === 'GET') {
         return handleSuggest(url, env.MAPY_API_KEY);
       }
@@ -74,6 +79,7 @@ async function handleSuggest(url, apiKey) {
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('limit', limit);
     mapyUrl.searchParams.set('lang', 'cs');
+    mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
@@ -106,6 +112,7 @@ async function handleGeocode(url, apiKey) {
     const mapyUrl = new URL(`${MAPY_API_BASE}/v1/geocode`);
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('lang', 'cs');
+    mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
@@ -169,6 +176,7 @@ async function handleRoute(request, apiKey) {
     mapyUrl.searchParams.set('routeType', 'car_fast_traffic');
     mapyUrl.searchParams.set('lang', 'cs');
     mapyUrl.searchParams.set('format', 'geojson');
+    mapyUrl.searchParams.set('apikey', apiKey);
 
     const finalUrl = mapyUrl.toString();
     console.log('🌐 API URL:', finalUrl);
@@ -226,10 +234,10 @@ async function handleTiles(url, apiKey) {
 
     const [, z, x, y] = pathParts;
 
-    // Sestavit URL pro Mapy.cz
-    const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}`;
+    // Sestavit URL pro Mapy.cz - apikey v URL i headeru pro spolehlivost
+    const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}?apikey=${apiKey}`;
 
-    // Stáhnout tile z Mapy.cz - autentizace přes header
+    // Stáhnout tile z Mapy.cz
     const response = await fetch(mapyTileUrl, {
       method: 'GET',
       headers: apiHeaders(apiKey, 'image/png'),
@@ -254,6 +262,95 @@ async function handleTiles(url, apiKey) {
     console.error('Tiles error:', error);
     return new Response('Tile error', { status: 500, headers: CORS_HEADERS });
   }
+}
+
+// Diagnostika - otestuje všechny API endpointy
+async function handleDebug(apiKey) {
+  const results = { timestamp: new Date().toISOString(), tests: {} };
+
+  // Test 1: Suggest
+  try {
+    const suggestUrl = new URL(`${MAPY_API_BASE}/v1/suggest`);
+    suggestUrl.searchParams.set('query', 'Praha');
+    suggestUrl.searchParams.set('limit', '2');
+    suggestUrl.searchParams.set('lang', 'cs');
+
+    const suggestRes = await fetch(suggestUrl.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const suggestText = await suggestRes.text();
+    results.tests.suggest = {
+      status: suggestRes.status,
+      ok: suggestRes.ok,
+      body: suggestText.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest = { error: e.message };
+  }
+
+  // Test 2: Geocode
+  try {
+    const geoUrl = new URL(`${MAPY_API_BASE}/v1/geocode`);
+    geoUrl.searchParams.set('query', 'Brno');
+    geoUrl.searchParams.set('lang', 'cs');
+
+    const geoRes = await fetch(geoUrl.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const geoText = await geoRes.text();
+    results.tests.geocode = {
+      status: geoRes.status,
+      ok: geoRes.ok,
+      body: geoText.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.geocode = { error: e.message };
+  }
+
+  // Test 3: Suggest s apikey v query (fallback test)
+  try {
+    const suggestUrl2 = new URL(`${MAPY_API_BASE}/v1/suggest`);
+    suggestUrl2.searchParams.set('query', 'Praha');
+    suggestUrl2.searchParams.set('limit', '2');
+    suggestUrl2.searchParams.set('lang', 'cs');
+    suggestUrl2.searchParams.set('apikey', apiKey);
+
+    const suggestRes2 = await fetch(suggestUrl2.toString(), {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    const suggestText2 = await suggestRes2.text();
+    results.tests.suggest_with_query_param = {
+      status: suggestRes2.status,
+      ok: suggestRes2.ok,
+      body: suggestText2.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest_with_query_param = { error: e.message };
+  }
+
+  // Test 4: Tiles
+  try {
+    const tileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/7/68/43`;
+    const tileRes = await fetch(tileUrl, {
+      method: 'GET',
+      headers: apiHeaders(apiKey, 'image/png'),
+    });
+    results.tests.tiles = {
+      status: tileRes.status,
+      ok: tileRes.ok,
+      contentType: tileRes.headers.get('content-type'),
+    };
+  } catch (e) {
+    results.tests.tiles = { error: e.message };
+  }
+
+  results.apiBase = MAPY_API_BASE;
+  results.authMethod = 'X-Mapy-Api-Key header';
+
+  return jsonResponse(results);
 }
 
 function jsonResponse(data, status = 200) {
