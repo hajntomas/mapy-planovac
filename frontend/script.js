@@ -4,7 +4,7 @@
  */
 
 // ===== KONFIGURACE =====
-const WORKER_URL = 'https://mapy-planovac-worker.hajn-tomas.workers.dev';
+const WORKER_URL = 'https://mapy-planovac-worker.hta.workers.dev';
 
 // ===== GLOBÁLNÍ PROMĚNNÉ =====
 let map = null;
