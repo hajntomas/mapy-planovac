@@ -8,7 +8,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const MAPY_API_BASE = 'https://api.mapy.cz';
+const MAPY_API_BASE = 'https://api.mapy.com';
 
 // Společné headers pro API požadavky - autentizace přes header
 function apiHeaders(apiKey, accept = 'application/json') {
@@ -347,8 +347,30 @@ async function handleDebug(apiKey) {
     results.tests.tiles = { error: e.message };
   }
 
+  // Test 5: Suggest přes api.mapy.cz (alternativní doména)
+  try {
+    const suggestUrl3 = new URL('https://api.mapy.cz/v1/suggest');
+    suggestUrl3.searchParams.set('query', 'Praha');
+    suggestUrl3.searchParams.set('limit', '2');
+    suggestUrl3.searchParams.set('lang', 'cs');
+    suggestUrl3.searchParams.set('apikey', apiKey);
+
+    const suggestRes3 = await fetch(suggestUrl3.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const suggestText3 = await suggestRes3.text();
+    results.tests.suggest_mapy_cz = {
+      status: suggestRes3.status,
+      ok: suggestRes3.ok,
+      body: suggestText3.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest_mapy_cz = { error: e.message };
+  }
+
   results.apiBase = MAPY_API_BASE;
-  results.authMethod = 'X-Mapy-Api-Key header';
+  results.authMethod = 'X-Mapy-Api-Key header + apikey query param';
 
   return jsonResponse(results);
 }
