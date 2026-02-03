@@ -8,7 +8,15 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const MAPY_API_BASE = 'https://api.mapy.com';
+const MAPY_API_BASE = 'https://api.mapy.cz';
+
+// Společné headers pro API požadavky - autentizace přes header
+function apiHeaders(apiKey, accept = 'application/json') {
+  return {
+    'Accept': accept,
+    'X-Mapy-Api-Key': apiKey,
+  };
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -66,15 +74,16 @@ async function handleSuggest(url, apiKey) {
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('limit', limit);
     mapyUrl.searchParams.set('lang', 'cs');
-    mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     if (!response.ok) {
-      throw new Error(`Mapy.cz API error: ${response.status}`);
+      const text = await response.text();
+      console.error('Suggest API error:', response.status, text);
+      throw new Error(`Mapy.cz API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
@@ -97,15 +106,16 @@ async function handleGeocode(url, apiKey) {
     const mapyUrl = new URL(`${MAPY_API_BASE}/v1/geocode`);
     mapyUrl.searchParams.set('query', query.trim());
     mapyUrl.searchParams.set('lang', 'cs');
-    mapyUrl.searchParams.set('apikey', apiKey);
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     if (!response.ok) {
-      throw new Error(`Mapy.cz API error: ${response.status}`);
+      const text = await response.text();
+      console.error('Geocode API error:', response.status, text);
+      throw new Error(`Mapy.cz API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
@@ -159,14 +169,13 @@ async function handleRoute(request, apiKey) {
     mapyUrl.searchParams.set('routeType', 'car_fast_traffic');
     mapyUrl.searchParams.set('lang', 'cs');
     mapyUrl.searchParams.set('format', 'geojson');
-    mapyUrl.searchParams.set('apikey', apiKey);
 
     const finalUrl = mapyUrl.toString();
-    console.log('🌐 API URL:', finalUrl.replace(apiKey, 'XXX'));
+    console.log('🌐 API URL:', finalUrl);
 
     const response = await fetch(finalUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     console.log('📡 Response status:', response.status);
@@ -177,11 +186,10 @@ async function handleRoute(request, apiKey) {
 
     if (!response.ok) {
       console.error('❌ Routing API error:', response.status);
-      return jsonResponse({ 
-        error: 'Chyba při výpočtu trasy', 
+      return jsonResponse({
+        error: 'Chyba při výpočtu trasy',
         message: `Mapy.cz API vratilo status ${response.status}`,
-        details: responseText,
-        debugUrl: finalUrl.replace(apiKey, 'XXX')
+        details: responseText
       }, response.status);
     }
 
@@ -206,32 +214,30 @@ async function handleRoute(request, apiKey) {
   }
 }
 
-// NOVÁ funkce pro tiles
+// Tiles proxy
 async function handleTiles(url, apiKey) {
   try {
     // Očekáváme URL ve formátu: /tiles/z/x/y
     const pathParts = url.pathname.split('/').filter(p => p);
-    
+
     if (pathParts.length !== 4 || pathParts[0] !== 'tiles') {
-      return new Response('Invalid tiles path', { status: 400 });
+      return new Response('Invalid tiles path', { status: 400, headers: CORS_HEADERS });
     }
 
     const [, z, x, y] = pathParts;
 
     // Sestavit URL pro Mapy.cz
-    const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}?apikey=${apiKey}`;
+    const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}`;
 
-    // Stáhnout tile z Mapy.cz
+    // Stáhnout tile z Mapy.cz - autentizace přes header
     const response = await fetch(mapyTileUrl, {
       method: 'GET',
-      headers: {
-        'Accept': 'image/png',
-      },
+      headers: apiHeaders(apiKey, 'image/png'),
     });
 
     if (!response.ok) {
       console.error('Tiles error:', response.status);
-      return new Response('Tile not found', { status: response.status });
+      return new Response('Tile not found', { status: response.status, headers: CORS_HEADERS });
     }
 
     // Vrátit obrázek s CORS hlavičkami
@@ -240,13 +246,13 @@ async function handleTiles(url, apiKey) {
       headers: {
         ...CORS_HEADERS,
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400', // Cache na 24 hodin
+        'Cache-Control': 'public, max-age=86400',
       },
     });
 
   } catch (error) {
     console.error('Tiles error:', error);
-    return new Response('Tile error', { status: 500 });
+    return new Response('Tile error', { status: 500, headers: CORS_HEADERS });
   }
 }
 
