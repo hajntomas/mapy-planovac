@@ -127,7 +127,13 @@ async function fetchSuggestions(query, resultsElement, inputElement) {
     
   } catch (error) {
     console.error('Suggest error:', error);
-    showNotification('Chyba při načítání návrhů adres.', 'error');
+    if (error.message && error.message.includes('401')) {
+      showNotification('Chyba autentizace API. Zkontrolujte API klíč.', 'error');
+    } else if (error.message && error.message.includes('403')) {
+      showNotification('Přístup k API byl zamítnut. Zkontrolujte API klíč.', 'error');
+    } else {
+      showNotification('Chyba při načítání návrhů adres.', 'error');
+    }
   }
 }
 
@@ -921,20 +927,50 @@ async function calculateRoute(formData) {
       }
       
       const data = await response.json();
-      
-      if (!data.length || !data.duration) {
+
+      // Zpracovat různé možné formáty odpovědi z API
+      let routeLength, routeDuration, routeGeometry;
+
+      if (data.length !== undefined && data.duration !== undefined) {
+        // Přímý formát: { length, duration, geometry }
+        routeLength = data.length;
+        routeDuration = data.duration;
+        routeGeometry = data.geometry;
+      } else if (data.route) {
+        // Obalený formát: { route: { length, duration, geometry } }
+        routeLength = data.route.length;
+        routeDuration = data.route.duration;
+        routeGeometry = data.route.geometry;
+      } else if (data.features && data.features.length > 0) {
+        // GeoJSON FeatureCollection formát
+        const feature = data.features[0];
+        routeLength = feature.properties?.length;
+        routeDuration = feature.properties?.duration;
+        routeGeometry = feature.geometry;
+      } else if (data.type === 'Feature') {
+        // GeoJSON Feature formát
+        routeLength = data.properties?.length;
+        routeDuration = data.properties?.duration;
+        routeGeometry = data.geometry;
+      } else {
+        console.error('Neznámý formát odpovědi z routing API:', JSON.stringify(data).substring(0, 500));
+        throw new Error(`Úsek ${i + 1}: neznámý formát odpovědi`);
+      }
+
+      if (!routeLength || !routeDuration) {
+        console.error('Chybí data trasy v odpovědi:', JSON.stringify(data).substring(0, 500));
         throw new Error(`Úsek ${i + 1} nebyl nalezen`);
       }
-      
+
       legs.push({
         from: from.address,
         to: to.address,
-        distance: data.length,
-        duration: data.duration,
-        geometry: data.geometry
+        distance: routeLength,
+        duration: routeDuration,
+        geometry: routeGeometry
       });
       
-      console.log(`✅ Úsek ${i + 1}: ${(data.length / 1000).toFixed(1)} km, ${Math.round(data.duration / 60)} min`);
+      console.log(`✅ Úsek ${i + 1}: ${(routeLength / 1000).toFixed(1)} km, ${Math.round(routeDuration / 60)} min`);
     }
     
     const totalDistance = legs.reduce((sum, leg) => sum + leg.distance, 0);
@@ -942,8 +978,25 @@ async function calculateRoute(formData) {
     
     const allCoordinates = [];
     legs.forEach(leg => {
-      if (leg.geometry && leg.geometry.geometry && leg.geometry.geometry.coordinates) {
-        allCoordinates.push(...leg.geometry.geometry.coordinates);
+      if (!leg.geometry) return;
+
+      let coords = null;
+      if (leg.geometry.type === 'LineString' && leg.geometry.coordinates) {
+        // Přímá LineString geometrie
+        coords = leg.geometry.coordinates;
+      } else if (leg.geometry.type === 'Feature' && leg.geometry.geometry) {
+        // GeoJSON Feature s vnořenou geometrií
+        coords = leg.geometry.geometry.coordinates;
+      } else if (leg.geometry.geometry && leg.geometry.geometry.coordinates) {
+        // Jiný obalený formát
+        coords = leg.geometry.geometry.coordinates;
+      } else if (leg.geometry.coordinates) {
+        // Fallback - přímé coordinates
+        coords = leg.geometry.coordinates;
+      }
+
+      if (coords) {
+        allCoordinates.push(...coords);
       }
     });
     
@@ -1092,12 +1145,19 @@ function displayRouteOnMap(routeData, formData) {
   
   // Vykreslit trasu (modrá čára)
   if (routeData.route && routeData.route.geometry) {
-    const coordinates = routeData.route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-    L.polyline(coordinates, {
-      color: '#4A90E2',
-      weight: 5,
-      opacity: 0.8
-    }).addTo(routeLayer);
+    let coords = routeData.route.geometry.coordinates;
+    // Podpora pro vnořenou geometrii (GeoJSON Feature)
+    if (!coords && routeData.route.geometry.geometry) {
+      coords = routeData.route.geometry.geometry.coordinates;
+    }
+    if (coords && coords.length > 0) {
+      const leafletCoords = coords.map(coord => [coord[1], coord[0]]);
+      L.polyline(leafletCoords, {
+        color: '#4A90E2',
+        weight: 5,
+        opacity: 0.8
+      }).addTo(routeLayer);
+    }
   }
   
   const startCoords = formData.start.coords.split(',').map(Number);

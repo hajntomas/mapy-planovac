@@ -10,6 +10,14 @@ const CORS_HEADERS = {
 
 const MAPY_API_BASE = 'https://api.mapy.com';
 
+// Společné headers pro API požadavky - autentizace přes header
+function apiHeaders(apiKey, accept = 'application/json') {
+  return {
+    'Accept': accept,
+    'X-Mapy-Api-Key': apiKey,
+  };
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
@@ -25,6 +33,11 @@ export default {
 
       if (!env.MAPY_API_KEY) {
         return jsonResponse({ error: 'API klíč není nakonfigurován' }, 500);
+      }
+
+      // Diagnostický endpoint - otevřete v prohlížeči pro zjištění problémů
+      if (path === '/api/debug' && request.method === 'GET') {
+        return handleDebug(env.MAPY_API_KEY);
       }
 
       if (path === '/api/suggest' && request.method === 'GET') {
@@ -70,11 +83,13 @@ async function handleSuggest(url, apiKey) {
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     if (!response.ok) {
-      throw new Error(`Mapy.cz API error: ${response.status}`);
+      const text = await response.text();
+      console.error('Suggest API error:', response.status, text);
+      throw new Error(`Mapy.cz API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
@@ -101,11 +116,13 @@ async function handleGeocode(url, apiKey) {
 
     const response = await fetch(mapyUrl.toString(), {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     if (!response.ok) {
-      throw new Error(`Mapy.cz API error: ${response.status}`);
+      const text = await response.text();
+      console.error('Geocode API error:', response.status, text);
+      throw new Error(`Mapy.cz API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
@@ -162,11 +179,11 @@ async function handleRoute(request, apiKey) {
     mapyUrl.searchParams.set('apikey', apiKey);
 
     const finalUrl = mapyUrl.toString();
-    console.log('🌐 API URL:', finalUrl.replace(apiKey, 'XXX'));
+    console.log('🌐 API URL:', finalUrl);
 
     const response = await fetch(finalUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: apiHeaders(apiKey),
     });
 
     console.log('📡 Response status:', response.status);
@@ -177,11 +194,10 @@ async function handleRoute(request, apiKey) {
 
     if (!response.ok) {
       console.error('❌ Routing API error:', response.status);
-      return jsonResponse({ 
-        error: 'Chyba při výpočtu trasy', 
+      return jsonResponse({
+        error: 'Chyba při výpočtu trasy',
         message: `Mapy.cz API vratilo status ${response.status}`,
-        details: responseText,
-        debugUrl: finalUrl.replace(apiKey, 'XXX')
+        details: responseText
       }, response.status);
     }
 
@@ -206,32 +222,30 @@ async function handleRoute(request, apiKey) {
   }
 }
 
-// NOVÁ funkce pro tiles
+// Tiles proxy
 async function handleTiles(url, apiKey) {
   try {
     // Očekáváme URL ve formátu: /tiles/z/x/y
     const pathParts = url.pathname.split('/').filter(p => p);
-    
+
     if (pathParts.length !== 4 || pathParts[0] !== 'tiles') {
-      return new Response('Invalid tiles path', { status: 400 });
+      return new Response('Invalid tiles path', { status: 400, headers: CORS_HEADERS });
     }
 
     const [, z, x, y] = pathParts;
 
-    // Sestavit URL pro Mapy.cz
+    // Sestavit URL pro Mapy.cz - apikey v URL i headeru pro spolehlivost
     const mapyTileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/${z}/${x}/${y}?apikey=${apiKey}`;
 
     // Stáhnout tile z Mapy.cz
     const response = await fetch(mapyTileUrl, {
       method: 'GET',
-      headers: {
-        'Accept': 'image/png',
-      },
+      headers: apiHeaders(apiKey, 'image/png'),
     });
 
     if (!response.ok) {
       console.error('Tiles error:', response.status);
-      return new Response('Tile not found', { status: response.status });
+      return new Response('Tile not found', { status: response.status, headers: CORS_HEADERS });
     }
 
     // Vrátit obrázek s CORS hlavičkami
@@ -240,14 +254,125 @@ async function handleTiles(url, apiKey) {
       headers: {
         ...CORS_HEADERS,
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400', // Cache na 24 hodin
+        'Cache-Control': 'public, max-age=86400',
       },
     });
 
   } catch (error) {
     console.error('Tiles error:', error);
-    return new Response('Tile error', { status: 500 });
+    return new Response('Tile error', { status: 500, headers: CORS_HEADERS });
   }
+}
+
+// Diagnostika - otestuje všechny API endpointy
+async function handleDebug(apiKey) {
+  const results = { timestamp: new Date().toISOString(), tests: {} };
+
+  // Test 1: Suggest
+  try {
+    const suggestUrl = new URL(`${MAPY_API_BASE}/v1/suggest`);
+    suggestUrl.searchParams.set('query', 'Praha');
+    suggestUrl.searchParams.set('limit', '2');
+    suggestUrl.searchParams.set('lang', 'cs');
+
+    const suggestRes = await fetch(suggestUrl.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const suggestText = await suggestRes.text();
+    results.tests.suggest = {
+      status: suggestRes.status,
+      ok: suggestRes.ok,
+      body: suggestText.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest = { error: e.message };
+  }
+
+  // Test 2: Geocode
+  try {
+    const geoUrl = new URL(`${MAPY_API_BASE}/v1/geocode`);
+    geoUrl.searchParams.set('query', 'Brno');
+    geoUrl.searchParams.set('lang', 'cs');
+
+    const geoRes = await fetch(geoUrl.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const geoText = await geoRes.text();
+    results.tests.geocode = {
+      status: geoRes.status,
+      ok: geoRes.ok,
+      body: geoText.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.geocode = { error: e.message };
+  }
+
+  // Test 3: Suggest s apikey v query (fallback test)
+  try {
+    const suggestUrl2 = new URL(`${MAPY_API_BASE}/v1/suggest`);
+    suggestUrl2.searchParams.set('query', 'Praha');
+    suggestUrl2.searchParams.set('limit', '2');
+    suggestUrl2.searchParams.set('lang', 'cs');
+    suggestUrl2.searchParams.set('apikey', apiKey);
+
+    const suggestRes2 = await fetch(suggestUrl2.toString(), {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    const suggestText2 = await suggestRes2.text();
+    results.tests.suggest_with_query_param = {
+      status: suggestRes2.status,
+      ok: suggestRes2.ok,
+      body: suggestText2.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest_with_query_param = { error: e.message };
+  }
+
+  // Test 4: Tiles
+  try {
+    const tileUrl = `${MAPY_API_BASE}/v1/maptiles/basic/256/7/68/43`;
+    const tileRes = await fetch(tileUrl, {
+      method: 'GET',
+      headers: apiHeaders(apiKey, 'image/png'),
+    });
+    results.tests.tiles = {
+      status: tileRes.status,
+      ok: tileRes.ok,
+      contentType: tileRes.headers.get('content-type'),
+    };
+  } catch (e) {
+    results.tests.tiles = { error: e.message };
+  }
+
+  // Test 5: Suggest přes api.mapy.cz (alternativní doména)
+  try {
+    const suggestUrl3 = new URL('https://api.mapy.cz/v1/suggest');
+    suggestUrl3.searchParams.set('query', 'Praha');
+    suggestUrl3.searchParams.set('limit', '2');
+    suggestUrl3.searchParams.set('lang', 'cs');
+    suggestUrl3.searchParams.set('apikey', apiKey);
+
+    const suggestRes3 = await fetch(suggestUrl3.toString(), {
+      method: 'GET',
+      headers: apiHeaders(apiKey),
+    });
+    const suggestText3 = await suggestRes3.text();
+    results.tests.suggest_mapy_cz = {
+      status: suggestRes3.status,
+      ok: suggestRes3.ok,
+      body: suggestText3.substring(0, 500),
+    };
+  } catch (e) {
+    results.tests.suggest_mapy_cz = { error: e.message };
+  }
+
+  results.apiBase = MAPY_API_BASE;
+  results.authMethod = 'X-Mapy-Api-Key header + apikey query param';
+
+  return jsonResponse(results);
 }
 
 function jsonResponse(data, status = 200) {
